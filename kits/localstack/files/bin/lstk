@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Runs lstk without AWS_ENDPOINT_URL. The kit sets that variable so that the
+# AWS CLI and the AWS SDKs send requests to LocalStack. lstk reads it as an
+# instruction to use a remote emulator, and then refuses local commands such
+# as start, stop, and logs. Without it, lstk finds the local container.
+exec env -u AWS_ENDPOINT_URL /opt/localstack-kit/lstk/lstk "$@"

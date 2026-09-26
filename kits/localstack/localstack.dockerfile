@@ -15,10 +15,9 @@ WORKDIR /tmp/build
 FROM base AS lstk
 ARG TARGETARCH
 ARG LSTK_VERSION
-RUN mkdir -p "$KIT_HOME/lstk" "$KIT_HOME/bin" \
+RUN mkdir -p "$KIT_HOME/lstk" \
  && curl -fsSL "https://github.com/localstack/lstk/releases/download/v${LSTK_VERSION}/lstk_${LSTK_VERSION}_linux_${TARGETARCH}.tar.gz" \
-    | tar -xz -C "$KIT_HOME/lstk" lstk bundled-extensions lstk-extensions.toml \
- && ln -s ../lstk/lstk "$KIT_HOME/bin/lstk"
+    | tar -xz -C "$KIT_HOME/lstk" lstk bundled-extensions lstk-extensions.toml
 
 FROM base AS node
 ARG TARGETARCH
