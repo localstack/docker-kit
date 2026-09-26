@@ -3,7 +3,7 @@ LOCAL_PLATFORM ?= linux/$(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/
 REGISTRY ?= $(LOCAL_REGISTRY)
 AGENT ?= claude
 
-.PHONY: registry build-local release sbx-allow-local smoke e2e project-config
+.PHONY: registry build-local release bump sbx-allow-local smoke e2e project-config
 
 # Starts an HTTPS registry for kit tests. Kit sets can only list published
 # kits, so local builds push the mixin here first.
@@ -15,6 +15,10 @@ build-local: registry
 
 release:
 	scripts/build.sh
+
+# Sets one version on all kits, for example: make bump VERSION=0.2.0
+bump:
+	scripts/bump-version.sh $(VERSION)
 
 # Lets sbx load kits from the local registry. The default allows docker.io
 # only. Other allowed sources stay in the list.
