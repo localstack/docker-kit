@@ -83,6 +83,8 @@ The agent gets instructions for LocalStack in its context file (`CLAUDE.md`
 or `AGENTS.md`). In short:
 
 - `lstk status` shows if LocalStack runs. `lstk start` starts it.
+- `lskit-status` shows how the start at boot went, for example `running`,
+  `failed`, or `missing-token`. The log is `/tmp/localstack-kit/start.log`.
 - `AWS_ENDPOINT_URL=http://localhost:4566` and the `test` credentials are
   set, so the AWS CLI and the AWS SDKs use LocalStack.
 - `tflocal`, `cdklocal`, `samlocal`, and `awslocal` run Terraform, AWS CDK,
@@ -118,6 +120,12 @@ The values apply at each start, also when the agent runs `lstk start` or
 [LocalStack configuration reference](https://docs.localstack.cloud/references/configuration/)
 for the variables.
 
+At boot, these values reach lstk because `sbx` 0.45 gives startup hooks the
+whole sandbox environment. The kit specification lets a runtime give a hook
+only the variables that the kit names, and the kit cannot name every
+`LOCALSTACK_*` variable. For settings that must apply at boot on every
+runtime, put them in an env profile of an lstk config (see the next section).
+
 ### Use the lstk config of your project
 
 If the workspace has `.lstk/config.toml`, the kit starts LocalStack with that
@@ -152,6 +160,10 @@ Some rules apply:
 - The kit adds `LAMBDA_IGNORE_ARCHITECTURE=1` and `SKIP_SSL_CERT_DOWNLOAD=1`
   if the file does not set them.
 - The `localstack_image` kit argument applies only to the kit config.
+- A project config can start only LocalStack images, unless you set
+  `-e LSKIT_ALLOW_ANY_IMAGE=1`. To ignore `.lstk/config.toml`, for example in
+  a repository that you do not trust, set `-e LSKIT_IGNORE_PROJECT_CONFIG=1`.
+  See [Security](docs/security.md#project-lstk-config).
 - After a change to the file, run `lstk restart` in the sandbox.
 - The AWS endpoint, credentials, and tools of the kit are for the AWS
   emulator.
