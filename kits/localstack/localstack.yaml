@@ -88,9 +88,15 @@ capabilities:
           - wings.crawlchat.app:443
           - us.i.posthog.com:443
         deny:
-          # These names resolve to 127.0.0.1. Through the proxy, that is the
-          # host, which can run its own LocalStack. Sandbox clients reach them
-          # directly because proxy-bypass.sh puts them in NO_PROXY.
+          # Through the proxy, loopback is the host, which can run its own
+          # LocalStack. Sandbox clients reach these names directly, because
+          # NO_PROXY has them (proxy-bypass.sh adds the LocalStack names).
+          # The rules match names, so a DNS name that resolves to 127.0.0.1
+          # still reaches the host under an allow-all policy.
+          - localhost
+          - 127.0.0.0/8
+          - "::1/128"
+          - host.docker.internal
           - localhost.localstack.cloud
           - "**.localhost.localstack.cloud"
 
