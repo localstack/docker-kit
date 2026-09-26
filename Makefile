@@ -16,4 +16,4 @@ release:
 
 # Lets sbx load kits from the local registry. The default allows docker.io only.
 sbx-allow-local:
-	sbx settings set kit.allowedSources '["docker.io/","$(LOCAL_REGISTRY)/"]'
+	sbx settings set kit.allowedSources '["docker.io/","$(LOCAL_REGISTRY)/localstack/"]'
