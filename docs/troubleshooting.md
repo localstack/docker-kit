@@ -2,11 +2,11 @@
 
 ## Check the LocalStack start
 
-The kit starts LocalStack in a startup hook and writes its state to
-`/tmp/localstack-kit/status`. Read the state and the log from the host:
+The kit starts LocalStack in a startup hook. `lskit-status` shows the state
+for the current boot. Read the state and the log from the host:
 
 ```console
-$ sbx exec ls-claude bash -lc 'cat /tmp/localstack-kit/status; tail -n 40 /tmp/localstack-kit/start.log'
+$ sbx exec ls-claude bash -lc 'lskit-status; tail -n 40 /tmp/localstack-kit/start.log'
 ```
 
 | State | Meaning |

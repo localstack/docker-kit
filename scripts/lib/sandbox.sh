@@ -110,10 +110,10 @@ in_sandbox() {
 wait_for_localstack() {
   local waited_seconds=0 status
   while ((waited_seconds < LOCALSTACK_WAIT_SECONDS)); do
-    status="$(in_sandbox 'cat /tmp/localstack-kit/status 2>/dev/null' || true)"
+    status="$(in_sandbox 'lskit-status' || true)"
     case "$status" in
       running) return 0 ;;
-      failed | missing-token | docker-unavailable) break ;;
+      failed | missing-token | config-missing | docker-unavailable) break ;;
     esac
     sleep 5
     waited_seconds=$((waited_seconds + 5))

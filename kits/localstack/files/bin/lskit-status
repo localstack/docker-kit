@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Prints the LocalStack start state for the current boot: starting, running,
+# failed, missing-token, config-missing, or docker-unavailable.
+#
+# The state file stays on disk when the sandbox stops. After a restart, it
+# holds the state of the previous boot until the startup hook writes again,
+# so a state from another boot counts as starting.
+set -uo pipefail
+
+readonly STATUS_FILE=/tmp/localstack-kit/status
+
+main() {
+  local state="" boot_id=""
+  { read -r state && read -r boot_id; } <"$STATUS_FILE" 2>/dev/null
+  if [[ -n "$state" && "$boot_id" == "$(cat /proc/sys/kernel/random/boot_id)" ]]; then
+    echo "$state"
+  else
+    echo starting
+  fi
+}
+
+main "$@"

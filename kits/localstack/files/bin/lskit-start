@@ -49,8 +49,9 @@ wait_for_docker() {
   done
 }
 
+# The second line ties the state to this boot. lskit-status compares it.
 record_status() {
-  printf '%s\n' "$1" >"$STATUS_FILE"
+  printf '%s\n%s\n' "$1" "$(cat /proc/sys/kernel/random/boot_id)" >"$STATUS_FILE"
   printf '%s [%s] %s\n' "$(date -u +%FT%TZ)" "$1" "$2"
 }
 
