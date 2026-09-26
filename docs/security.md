@@ -11,6 +11,7 @@ This page tells you what the kit isolates, what it does not isolate, and why.
 | A LocalStack or other service on your host | Partly | The kit denies loopback names at the sandbox proxy. Under the `allow-all` policy, another name that resolves to `127.0.0.1` still reaches the host. |
 | Your agent credentials | Yes | Docker Sandboxes keeps them on the host. The sandbox gets a placeholder. |
 | Your LocalStack auth token | No | The token must be in the sandbox. The agent can read it. |
+| The sandbox, from files in the workspace | Partly | The agent runs code from the workspace, and a project lstk config runs at boot. The kit limits the images that a project config can start. |
 
 ## LocalStack auth token
 
@@ -44,6 +45,27 @@ Do these steps to limit the risk:
 
 The agent context tells the agent not to print, log, or commit the token.
 This is an instruction, not a control.
+
+## Project lstk config
+
+At boot, the kit starts LocalStack with the project config of lstk:
+`.lstk/config.toml` in the workspace, or the file that `LSKIT_LSTK_CONFIG`
+names. This file comes from the repository, and it runs before the agent
+does anything. The image that it starts gets the auth token and the sandbox
+Docker socket. Its env profiles also change what LocalStack does, for example
+which extensions it installs.
+
+The kit limits this:
+
+- A project config can start only LocalStack images: `localstack/...` on
+  Docker Hub, or `public.ecr.aws/localstack/...`. With another image, the
+  start stops, and `lskit-status` shows `config-rejected`. To allow it,
+  create the sandbox with `-e LSKIT_ALLOW_ANY_IMAGE=1`.
+- To ignore `.lstk/config.toml`, create the sandbox with
+  `-e LSKIT_IGNORE_PROJECT_CONFIG=1`. The kit then uses its own config.
+
+Treat a project config like a script in the repository. For a repository
+that you do not trust, set `LSKIT_IGNORE_PROJECT_CONFIG=1`.
 
 ## AWS accounts
 
