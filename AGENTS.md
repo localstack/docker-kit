@@ -59,3 +59,15 @@ This applies to code, comments, commit messages, and prose. The aim is that noth
 
 Always follow ASD-STE100 Simplified Technical English for writing comments or documentation.
 
+
+## Kits
+
+Lessons from building the kits in this repo. Scopes for commits here: kit, scripts, docs.
+
+- Build kits with the lskit docker-container builder (scripts/build.sh). The docker driver with the classic image store (OrbStack, older Docker Desktop) pushes Docker v2 manifests. These drop the OCI annotation that holds the kit descriptor, so sbx does not see a kit.
+- A kit set can only list published kits. Test sets against the local registry (make registry, make build-local).
+- The local registry uses port 5055. On macOS, AirPlay Receiver holds port 5000.
+- A set cannot re-export a kit arg that has env:. Put create-time values in lifecycle files instead, then read the file.
+- sbx kit validate cannot check a v3 source directory without the kit builder. A docker buildx build of the descriptor runs the same validation.
+- Startup hooks must exit 0. A failed hook stops the sandbox boot.
+- Codex passes only a short list of variables to stdio MCP servers. Name the others in env_vars.
