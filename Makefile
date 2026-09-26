@@ -3,7 +3,7 @@ LOCAL_PLATFORM ?= linux/$(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/
 REGISTRY ?= $(LOCAL_REGISTRY)
 AGENT ?= claude
 
-.PHONY: registry build-local release sbx-allow-local smoke e2e
+.PHONY: registry build-local release sbx-allow-local smoke e2e project-config
 
 # Starts an HTTPS registry for kit tests. Kit sets can only list published
 # kits, so local builds push the mixin here first.
@@ -27,3 +27,7 @@ smoke:
 # Gives the agent a Terraform task and checks the result. Uses model credits.
 e2e:
 	scripts/headless.sh $(AGENT) --registry $(REGISTRY)
+
+# Checks that the kit starts LocalStack with a project lstk config.
+project-config:
+	scripts/project-config.sh $(AGENT) --registry $(REGISTRY)
