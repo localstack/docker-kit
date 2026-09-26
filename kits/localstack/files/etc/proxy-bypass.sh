@@ -9,3 +9,13 @@ case ",${NO_PROXY:-}," in
 esac
 no_proxy="$NO_PROXY"
 export NO_PROXY no_proxy
+
+# Java reads its proxy bypass list from -Dhttp.nonProxyHosts, not NO_PROXY.
+case "${JAVA_TOOL_OPTIONS:-}" in
+  *localhost.localstack.cloud*) ;;
+  *-Dhttp.nonProxyHosts=*)
+    JAVA_TOOL_OPTIONS="$(printf '%s' "$JAVA_TOOL_OPTIONS" \
+      | sed 's/-Dhttp\.nonProxyHosts=\([^ ]*\)/-Dhttp.nonProxyHosts=\1|localhost.localstack.cloud|*.localhost.localstack.cloud/')"
+    export JAVA_TOOL_OPTIONS
+    ;;
+esac
