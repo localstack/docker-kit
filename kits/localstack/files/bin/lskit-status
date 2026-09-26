@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prints the LocalStack start state for the current boot: starting, running,
-# failed, missing-token, config-missing, or docker-unavailable.
+# failed, missing-token, config-missing, config-rejected, or
+# docker-unavailable.
 #
 # The state file stays on disk when the sandbox stops. After a restart, it
 # holds the state of the previous boot until the startup hook writes again,

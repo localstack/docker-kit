@@ -5,7 +5,8 @@
 #
 # The lstk config comes from the first of:
 #   1. LSKIT_LSTK_CONFIG, a path that is absolute or relative to the workspace
-#   2. <workspace>/.lstk/config.toml, the project config of lstk
+#   2. <workspace>/.lstk/config.toml, the project config of lstk, unless
+#      LSKIT_IGNORE_PROJECT_CONFIG is set
 #   3. ~/.config/lstk/config.toml, which the kit writes
 set -uo pipefail
 
@@ -17,6 +18,8 @@ readonly DOCKER_WAIT_SECONDS=180
 # The kit config sets these for the sandbox. A project config may leave them
 # out, so they go to LocalStack as LOCALSTACK_* variables instead.
 readonly KIT_DEFAULTS=(LAMBDA_IGNORE_ARCHITECTURE=1 SKIP_SSL_CERT_DOWNLOAD=1)
+# Images that a project config can start without LSKIT_ALLOW_ANY_IMAGE.
+readonly LOCALSTACK_IMAGE_PATTERN='^(docker\.io/)?localstack/|^public\.ecr\.aws/localstack/'
 
 # The hook PATH comes from the workload, and some workloads leave out the kit
 # directory.
@@ -37,8 +40,7 @@ start_localstack() {
     return
   fi
   config="$(active_config)"
-  if [[ ! -f "$config" ]]; then
-    record_status config-missing "LSKIT_LSTK_CONFIG names $config, and the file does not exist."
+  if ! config_is_usable "$config"; then
     return
   fi
   if ! wait_for_docker; then
@@ -55,11 +57,32 @@ active_config() {
       /*) echo "$LSKIT_LSTK_CONFIG" ;;
       *) echo "$workspace/$LSKIT_LSTK_CONFIG" ;;
     esac
-  elif [[ -f "$workspace/.lstk/config.toml" ]]; then
+  elif [[ -z "${LSKIT_IGNORE_PROJECT_CONFIG:-}" && -f "$workspace/.lstk/config.toml" ]]; then
     echo "$workspace/.lstk/config.toml"
   else
     echo "$KIT_CONFIG"
   fi
+}
+
+# A project config comes from the workspace, and lstk runs its image with the
+# auth token and the Docker socket. So a project config can start only
+# LocalStack images, unless the user sets LSKIT_ALLOW_ANY_IMAGE.
+config_is_usable() {
+  local config="$1" images
+  if [[ ! -f "$config" ]]; then
+    record_status config-missing "LSKIT_LSTK_CONFIG names $config, and the file does not exist."
+    return 1
+  fi
+  images="$(foreign_images "$config")"
+  if [[ "$config" != "$KIT_CONFIG" && -z "${LSKIT_ALLOW_ANY_IMAGE:-}" && -n "$images" ]]; then
+    record_status config-rejected "$config starts $images, which is not a LocalStack image. To allow it, create the sandbox with -e LSKIT_ALLOW_ANY_IMAGE=1."
+    return 1
+  fi
+}
+
+foreign_images() {
+  sed -n -E 's/^[[:space:]]*image[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$1" \
+    | grep -v -E "$LOCALSTACK_IMAGE_PATTERN" | paste -s -d , - || true
 }
 
 run_lstk_start() {
