@@ -80,3 +80,5 @@ Lessons from building the kits in this repo. Scopes for commits here: kit, scrip
 - Zero-filled files in a pulled image mean the host disk was full (the sandbox log shows I/O errors on vdd). Check df before long test runs, and prune the lskit builder cache after builds.
 - A set can only list kits whose descriptor is the same on every platform. docker/sbx-kit-codex 0.155.1 lists extra packages on arm64 and breaks multi-platform set builds. Check both platforms before you change a pinned agent kit.
 - A project lstk config (.lstk/config.toml or LSKIT_LSTK_CONFIG) belongs to the user. Never rewrite it. The kit adds its defaults as LOCALSTACK_* variables, and only for keys the file does not set.
+- sbx network rules match names, not resolved addresses. A deny for localhost does not stop another name that resolves to 127.0.0.1. Say so in the docs when a rule is a partial control.
+- The first login shell of a new sandbox prints the template banner on stdout. Test helpers use bash -c, not bash -lc, when they read command output.
