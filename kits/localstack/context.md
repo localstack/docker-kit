@@ -11,7 +11,16 @@ minutes.
 
 1. Run `lstk status`.
 2. If LocalStack is not running, run `lstk start`.
-3. If the start fails, read `/tmp/localstack-kit/start.log`.
+3. If the start fails, run `lskit-status` and read
+   `/tmp/localstack-kit/start.log`.
+
+### Project configuration
+
+If the workspace has `.lstk/config.toml`, the sandbox starts LocalStack with
+that file. `LSKIT_LSTK_CONFIG` can name a different file. The file sets the
+emulator (`aws`, `snowflake`, or `azure`), the image, and LocalStack
+variables. After you change it, run `lstk restart`. The endpoint, the
+credentials, and the tools below are for the AWS emulator.
 
 ### Endpoint and credentials
 
