@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Runs the lstk proxy command that matches the name of the calling link.
+# The links (tflocal, cdklocal, samlocal, awslocal) keep the legacy wrapper
+# names, because the LocalStack MCP server and older docs call them.
+set -euo pipefail
+
+main() {
+  local tool
+  tool="$(lstk_tool_for "$(basename "$0")")"
+  exec lstk "$tool" "$@"
+}
+
+lstk_tool_for() {
+  case "$1" in
+    tflocal) echo terraform ;;
+    cdklocal) echo cdk ;;
+    samlocal) echo sam ;;
+    awslocal) echo aws ;;
+    *)
+      echo "lskit: no lstk command maps to '$1'" >&2
+      return 1
+      ;;
+  esac
+}
+
+main "$@"
