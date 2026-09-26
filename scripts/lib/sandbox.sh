@@ -40,6 +40,9 @@ require_auth_token() {
   if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
     LOCALSTACK_AUTH_TOKEN="$(lstk_keychain_token)"
     export LOCALSTACK_AUTH_TOKEN
+    if [[ -n "$LOCALSTACK_AUTH_TOKEN" ]]; then
+      echo "==> using the LocalStack token of lstk login from the keychain" >&2
+    fi
   fi
   if [[ -z "$LOCALSTACK_AUTH_TOKEN" ]]; then
     echo "LOCALSTACK_AUTH_TOKEN is not set, and lstk has no token in the keychain" >&2
