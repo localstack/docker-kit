@@ -39,7 +39,7 @@ register_with_codex() {
 
 [mcp_servers.$SERVER_NAME]
 command = "$LAUNCHER"
-env_vars = ["LOCALSTACK_AUTH_TOKEN", "LOCALSTACK_IMAGE_NAME", "MAIN_CONTAINER_NAME", "DOCKER_HOST"]
+env_vars = ["LOCALSTACK_AUTH_TOKEN", "MAIN_CONTAINER_NAME", "DOCKER_HOST"]
 startup_timeout_sec = 60
 EOF
 }
