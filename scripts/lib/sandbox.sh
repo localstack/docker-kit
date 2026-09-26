@@ -97,11 +97,15 @@ start_keepalive_session() {
   keepalive_pid=$!
 }
 
-remove_sandbox() {
+stop_keepalive_session() {
   if [[ -n "$keepalive_pid" ]]; then
     kill "$keepalive_pid" 2>/dev/null || true
     keepalive_pid=""
   fi
+}
+
+remove_sandbox() {
+  stop_keepalive_session
   if [[ "$keep_sandbox" == true ]]; then
     echo "==> kept $sandbox_name"
     return 0
