@@ -5,4 +5,30 @@
 # as start, stop, and logs. Without it, lstk finds the local container.
 # shellcheck source=kits/localstack/files/etc/proxy-bypass.sh
 . /opt/localstack-kit/etc/proxy-bypass.sh
-exec env -u AWS_ENDPOINT_URL /opt/localstack-kit/lstk/lstk "$@"
+
+readonly LSTK_BINARY=/opt/localstack-kit/lstk/lstk
+readonly ACTIVE_CONFIG_FILE=/tmp/localstack-kit/config-path
+
+main() {
+  if needs_active_config "$@"; then
+    set -- --config "$(head -n 1 "$ACTIVE_CONFIG_FILE")" "$@"
+  fi
+  exec env -u AWS_ENDPOINT_URL "$LSTK_BINARY" "$@"
+}
+
+# lstk reads ./.lstk/config.toml, then ~/.config/lstk/config.toml. Outside the
+# project root, that can be a different config from the one the sandbox
+# started LocalStack with, so the wrapper passes that config.
+needs_active_config() {
+  local arg
+  if [[ ! -s "$ACTIVE_CONFIG_FILE" || -f ./.lstk/config.toml ]]; then
+    return 1
+  fi
+  for arg in "$@"; do
+    if [[ "$arg" == --config || "$arg" == --config=* ]]; then
+      return 1
+    fi
+  done
+}
+
+main "$@"
