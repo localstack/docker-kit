@@ -37,8 +37,10 @@ Do these steps to limit the risk:
 - Revoke the token if you think that it was exposed, for example in a commit
   or a log.
 - Do not give the agent tasks that print or upload environment variables.
-- Keep the network policy strict (see below). With a strict policy, the agent
-  can send data only to the hosts that the kits allow.
+- Keep the network policy strict (see below). A strict policy limits where
+  the agent can send data, but it does not remove all paths. Some hosts that
+  the kits allow accept data from any client, for example the analytics and
+  documentation search endpoints.
 
 The agent context tells the agent not to print, log, or commit the token.
 This is an instruction, not a control.
@@ -108,13 +110,20 @@ the agent needs.
 | `registry.terraform.io`, `releases.hashicorp.com` | Terraform providers and modules |
 | `registry.npmjs.org`, `pypi.org`, `files.pythonhosted.org` | Packages for CDK apps, Lambda code, and tests |
 | `github.com`, `api.github.com`, `codeload.github.com`, `objects.githubusercontent.com`, `raw.githubusercontent.com` | Source downloads and Terraform modules |
-| `wings.crawlchat.app`, `us.i.posthog.com` | LocalStack MCP server: documentation search and analytics |
+| `wings.crawlchat.app`, `us.i.posthog.com` | LocalStack MCP server: documentation search (CrawlChat) and analytics (PostHog) |
 
 Kit allow rules add to your policy. Under the `allow-all` policy, they have
 no effect. Under `balanced` or `deny-all`, they are the hosts that the
 sandbox can reach. Organization policy can override them. Kit deny rules
 (see [Services on the host](#services-on-the-host)) apply under every policy.
 To see which requests the policy blocked, run `sbx policy log`.
+
+## Third parties
+
+The documentation tool of the LocalStack MCP server sends the search queries
+of the agent to CrawlChat (`wings.crawlchat.app`). The MCP server sends usage
+events to PostHog (`us.i.posthog.com`), unless `MCP_ANALYTICS_DISABLED=1` is
+set. A query can contain text from your project.
 
 ## Telemetry
 
