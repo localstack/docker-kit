@@ -118,6 +118,44 @@ The values apply at each start, also when the agent runs `lstk start` or
 [LocalStack configuration reference](https://docs.localstack.cloud/references/configuration/)
 for the variables.
 
+### Use the lstk config of your project
+
+If the workspace has `.lstk/config.toml`, the kit starts LocalStack with that
+file instead of its own config. To use a different file, name it with
+`LSKIT_LSTK_CONFIG`. The path is absolute or relative to the workspace:
+
+```console
+$ sbx run --name ls-claude -e LOCALSTACK_AUTH_TOKEN \
+    -e LSKIT_LSTK_CONFIG=config/lstk-sandbox.toml \
+    docker.io/localstack/sbx-localstack-claude:0.1.0 .
+```
+
+The file controls the emulator, the image, the container name, and the env
+profiles. For example, this file starts the Snowflake emulator. Use
+`type = "azure"` for the Azure emulator:
+
+```toml
+[[containers]]
+type = "snowflake"
+port = "4566"
+env = ["sandbox"]
+
+[env.sandbox]
+GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
+```
+
+Some rules apply:
+
+- `GATEWAY_LISTEN` with `0.0.0.0` is necessary if you publish LocalStack to
+  the host with `-p`. Without it, lstk binds LocalStack to loopback in the
+  sandbox, and the start log has a note.
+- The kit adds `LAMBDA_IGNORE_ARCHITECTURE=1` and `SKIP_SSL_CERT_DOWNLOAD=1`
+  if the file does not set them.
+- The `localstack_image` kit argument applies only to the kit config.
+- After a change to the file, run `lstk restart` in the sandbox.
+- The AWS endpoint, credentials, and tools of the kit are for the AWS
+  emulator.
+
 ### Choose the LocalStack version
 
 The kit pins the LocalStack image. To use another image, set the
