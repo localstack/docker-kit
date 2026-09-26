@@ -1,5 +1,4 @@
 # BuildKit settings for the lskit builder. The local test registry
-# (make registry) serves plain HTTP.
+# (scripts/local-registry.sh) uses a self-signed certificate.
 [registry."localhost:5055"]
-  http = true
   insecure = true
