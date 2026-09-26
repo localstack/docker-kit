@@ -62,6 +62,7 @@ COPY --from=awscli /opt/localstack-kit/ /opt/localstack-kit/
 COPY --from=sam /opt/localstack-kit/ /opt/localstack-kit/
 COPY files/bin/ /opt/localstack-kit/bin/
 COPY files/etc/ /opt/localstack-kit/etc/
+COPY files/usr-local-bin/dockerd /usr/local/bin/dockerd
 ENV PATH=/opt/localstack-kit/bin:/opt/localstack-kit/node/bin \
     AWS_ENDPOINT_URL=http://localhost:4566 \
     AWS_ACCESS_KEY_ID=test \

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Starts the sandbox Docker daemon with tarinsecurepath=1.
+#
+# The sandbox template sets GODEBUG=tarinsecurepath=0. The AWS Lambda base
+# images on public.ecr.aws have a directory entry with an empty name, and Go
+# rejects that entry as an insecure path. Then LocalStack cannot pull the
+# images that run Lambda functions. Docker still keeps each path of a layer
+# inside the layer root. Only dockerd gets this setting.
+case ",${GODEBUG:-}," in
+  *,tarinsecurepath=0,*) GODEBUG="$(printf '%s' "$GODEBUG" | sed 's/tarinsecurepath=0/tarinsecurepath=1/')" ;;
+  *,tarinsecurepath=1,*) ;;
+  *) GODEBUG="${GODEBUG:+$GODEBUG,}tarinsecurepath=1" ;;
+esac
+export GODEBUG
+exec /usr/bin/dockerd "$@"
