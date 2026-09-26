@@ -32,13 +32,6 @@ start_localstack() {
   else
     record_status failed "lstk start failed. Read $LOG_FILE."
   fi
-  flush_image_layers
-}
-
-# A sandbox VM that stops before the page cache reaches the disk leaves
-# pulled image layers with zeroed files. Flush after each start.
-flush_image_layers() {
-  sync
 }
 
 wait_for_docker() {
