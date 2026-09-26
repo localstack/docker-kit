@@ -15,6 +15,7 @@ $ sbx exec ls-claude bash -lc 'lskit-status; tail -n 40 /tmp/localstack-kit/star
 | `running` | LocalStack is ready. |
 | `missing-token` | The sandbox has no `LOCALSTACK_AUTH_TOKEN`. Create the sandbox again with `-e LOCALSTACK_AUTH_TOKEN`. |
 | `config-missing` | `LSKIT_LSTK_CONFIG` names a file that does not exist. The path is absolute or relative to the workspace. |
+| `config-rejected` | The project config starts an image that is not a LocalStack image. See [Security](security.md#project-lstk-config). |
 | `docker-unavailable` | Docker in the sandbox did not start in 180 seconds. |
 | `failed` | lstk start failed. Read the log. |
 
