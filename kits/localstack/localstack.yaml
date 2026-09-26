@@ -86,9 +86,21 @@ capabilities:
           # LocalStack MCP server: docs search and product analytics
           - wings.crawlchat.app:443
           - us.i.posthog.com:443
+        deny:
+          # These names resolve to 127.0.0.1. Through the proxy, that is the
+          # host, which can run its own LocalStack. Sandbox clients reach them
+          # directly because proxy-bypass.sh puts them in NO_PROXY.
+          - localhost.localstack.cloud
+          - "**.localhost.localstack.cloud"
 
   - type: com.docker.sandbox/lifecycle@1
     config:
+      install:
+        - command: |
+            grep -q proxy-bypass.sh /etc/sandbox-persistent.sh 2>/dev/null && exit 0
+            echo '. /opt/localstack-kit/etc/proxy-bypass.sh' >>/etc/sandbox-persistent.sh
+          user: "0"
+          description: Send LocalStack hostnames around the sandbox proxy in agent shells
       files:
         - path: /home/agent/.config/lstk/config.toml
           mode: "0644"
