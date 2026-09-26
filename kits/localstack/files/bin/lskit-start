@@ -132,12 +132,25 @@ note_host_publishing() {
 # config can name the container, so the launcher reads them from these files.
 record_emulator() {
   local name
-  name="$(lstk --config "$1" status --json 2>/dev/null | grep -o '"name":"[^"]*"' | head -n 1 | cut -d '"' -f 4)"
+  name="$(running_emulator_name "$1")"
   if [[ -z "$name" ]]; then
     return
   fi
   printf '%s\n' "$name" >"$STATE_DIR/container-name"
   docker inspect -f '{{.Config.Image}}' "$name" >"$STATE_DIR/image" 2>/dev/null || true
+}
+
+running_emulator_name() {
+  lstk --config "$1" status --json 2>/dev/null | /opt/localstack-kit/node/bin/node -e '
+    let input = "";
+    process.stdin.on("data", (chunk) => (input += chunk));
+    process.stdin.on("end", () => {
+      try {
+        const emulators = JSON.parse(input).data?.emulators ?? [];
+        const running = emulators.find((emulator) => emulator.running);
+        if (running) process.stdout.write(running.name);
+      } catch {}
+    });' 2>/dev/null
 }
 
 wait_for_docker() {
