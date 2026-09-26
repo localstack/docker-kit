@@ -69,5 +69,4 @@ ENV PATH=/opt/localstack-kit/bin:/opt/localstack-kit/node/bin \
     AWS_SECRET_ACCESS_KEY=test \
     AWS_DEFAULT_REGION=us-east-1 \
     AWS_REGION=us-east-1 \
-    MAIN_CONTAINER_NAME=localstack-main \
     LSTK_KEYRING=file

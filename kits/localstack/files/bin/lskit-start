@@ -25,6 +25,7 @@ export PATH="/opt/localstack-kit/bin:$PATH"
 main() {
   mkdir -p "$STATE_DIR"
   exec >>"$LOG_FILE" 2>&1
+  rm -f "$STATE_DIR/container-name" "$STATE_DIR/image"
   start_localstack
   return 0
 }
@@ -67,6 +68,7 @@ run_lstk_start() {
   apply_kit_defaults "$config"
   record_status starting "lstk start is running with $config."
   if (cd "$(start_directory "$config")" && lstk --config "$config" --non-interactive start); then
+    record_emulator "$config"
     record_status running "LocalStack is ready. lstk config: $config."
   else
     record_status failed "lstk start failed with $config. Read $LOG_FILE."
@@ -92,6 +94,18 @@ apply_kit_defaults() {
     fi
     export "LOCALSTACK_$setting"
   done
+}
+
+# The MCP server must use the container and image that lstk started. A project
+# config can name the container, so the launcher reads them from these files.
+record_emulator() {
+  local name
+  name="$(lstk --config "$1" status --json 2>/dev/null | grep -o '"name":"[^"]*"' | head -n 1 | cut -d '"' -f 4)"
+  if [[ -z "$name" ]]; then
+    return
+  fi
+  printf '%s\n' "$name" >"$STATE_DIR/container-name"
+  docker inspect -f '{{.Config.Image}}' "$name" >"$STATE_DIR/image" 2>/dev/null || true
 }
 
 wait_for_docker() {

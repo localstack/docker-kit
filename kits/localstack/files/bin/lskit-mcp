@@ -5,17 +5,27 @@ set -euo pipefail
 
 readonly KIT_HOME=/opt/localstack-kit
 readonly SERVER_ENTRY="$KIT_HOME/node/lib/node_modules/@localstack/localstack-mcp-server/dist/cli.js"
-readonly LSTK_CONFIG="$HOME/.config/lstk/config.toml"
+readonly STATE_DIR=/tmp/localstack-kit
 
-# The MCP server and lstk must use the same image and container, or the MCP
-# server starts a second emulator. The image comes from the lstk config that
-# the kit writes at sandbox start.
-lstk_image() {
-  sed -n 's/^image = "\(.*\)"$/\1/p' "$LSTK_CONFIG" 2>/dev/null | head -n 1
+# lskit-start records the container and image that lstk started. The MCP
+# server must use the same ones, or it starts a second emulator. Before the
+# first start, the server finds the LocalStack container by itself.
+recorded() {
+  head -n 1 "$STATE_DIR/$1" 2>/dev/null || true
 }
 
-export MAIN_CONTAINER_NAME="${MAIN_CONTAINER_NAME:-localstack-main}"
-export LOCALSTACK_IMAGE_NAME="${LOCALSTACK_IMAGE_NAME:-$(lstk_image)}"
-export PATH="$KIT_HOME/bin:$KIT_HOME/node/bin:$PATH"
+main() {
+  local container image
+  container="$(recorded container-name)"
+  image="$(recorded image)"
+  if [[ -z "${MAIN_CONTAINER_NAME:-}" && -n "$container" ]]; then
+    export MAIN_CONTAINER_NAME="$container"
+  fi
+  if [[ -z "${LOCALSTACK_IMAGE_NAME:-}" && -n "$image" ]]; then
+    export LOCALSTACK_IMAGE_NAME="$image"
+  fi
+  export PATH="$KIT_HOME/bin:$KIT_HOME/node/bin:$PATH"
+  exec node "$SERVER_ENTRY" "$@"
+}
 
-exec node "$SERVER_ENTRY" "$@"
+main "$@"
