@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Runs the LocalStack MCP server on the Node.js runtime that this kit ships.
+# The agent starts it as a stdio MCP server.
+set -euo pipefail
+
+readonly KIT_HOME=/opt/localstack-kit
+readonly SERVER_ENTRY="$KIT_HOME/node/lib/node_modules/@localstack/localstack-mcp-server/dist/cli.js"
+
+export MAIN_CONTAINER_NAME="${MAIN_CONTAINER_NAME:-localstack-main}"
+export PATH="$KIT_HOME/bin:$KIT_HOME/node/bin:$PATH"
+
+exec node "$SERVER_ENTRY" "$@"
