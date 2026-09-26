@@ -3,7 +3,11 @@ LOCAL_PLATFORM ?= linux/$(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/
 REGISTRY ?= $(LOCAL_REGISTRY)
 AGENT ?= claude
 
-.PHONY: registry build-local release bump sbx-allow-local smoke e2e project-config
+.PHONY: lint registry build-local release bump sbx-allow-local smoke e2e project-config
+
+# Runs shellcheck on every shell script.
+lint:
+	scripts/lint.sh
 
 # Starts an HTTPS registry for kit tests. Kit sets can only list published
 # kits, so local builds push the mixin here first.
