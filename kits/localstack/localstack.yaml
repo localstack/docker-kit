@@ -123,7 +123,7 @@ capabilities:
       startup:
         - command: /opt/localstack-kit/bin/lskit-start
           background: true
-          env: [LOCALSTACK_AUTH_TOKEN, AWS_ENDPOINT_URL, DOCKER_HOST, LSTK_KEYRING]
+          env: [LOCALSTACK_AUTH_TOKEN, LOCALSTACK_DISABLE_EVENTS, AWS_ENDPOINT_URL, DOCKER_HOST, LSTK_KEYRING]
           description: Start LocalStack with lstk
 
   # LocalStack is a service that must outlive client sessions. sbx 0.45 does
