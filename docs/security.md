@@ -115,9 +115,15 @@ Lambda base images on `public.ecr.aws` have a directory entry with an empty
 name, so Docker cannot pull them, and LocalStack cannot run Lambda functions.
 
 The kit adds `/usr/local/bin/dockerd`, a small script that starts
-`/usr/bin/dockerd` with `tarinsecurepath=1`. The change applies to the Docker
-daemon only. Other programs in the sandbox keep the template setting. Docker
-still keeps each path of a layer inside the layer root.
+`/usr/bin/dockerd` with `tarinsecurepath=1`, which is the Go default. The
+setting applies to `dockerd` and to the processes that it starts:
+`containerd`, which unpacks the layers with the containerd image store, and
+the container shims. Other programs in the sandbox keep the template setting.
+moby and containerd have their own checks that keep each path of a layer
+inside the layer root, as in a standard Docker installation.
+
+The script works only while the template starts `dockerd` through a `PATH`
+lookup. The smoke test pulls a Lambda image to find a change.
 
 ## Network rules
 
