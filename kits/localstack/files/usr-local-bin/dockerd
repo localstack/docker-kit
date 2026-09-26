@@ -4,8 +4,14 @@
 # The sandbox template sets GODEBUG=tarinsecurepath=0. The AWS Lambda base
 # images on public.ecr.aws have a directory entry with an empty name, and Go
 # rejects that entry as an insecure path. Then LocalStack cannot pull the
-# images that run Lambda functions. Docker still keeps each path of a layer
-# inside the layer root. Only dockerd gets this setting.
+# images that run Lambda functions. tarinsecurepath=1 is the Go default, and
+# moby and containerd keep each path of a layer inside the layer root.
+#
+# dockerd passes the setting to the processes it starts: containerd, which
+# unpacks layers with the containerd image store, and the container shims.
+# Other programs in the sandbox keep the template setting. This works only
+# while the template starts dockerd through a PATH lookup. The smoke test
+# checks a Lambda image pull.
 case ",${GODEBUG:-}," in
   *,tarinsecurepath=0,*) GODEBUG="$(printf '%s' "$GODEBUG" | sed 's/tarinsecurepath=0/tarinsecurepath=1/')" ;;
   *,tarinsecurepath=1,*) ;;
