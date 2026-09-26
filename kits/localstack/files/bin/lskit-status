@@ -11,7 +11,7 @@ readonly STATUS_FILE=/tmp/localstack-kit/status
 
 main() {
   local state="" boot_id=""
-  { read -r state && read -r boot_id; } <"$STATUS_FILE" 2>/dev/null
+  { read -r state && read -r boot_id; } 2>/dev/null <"$STATUS_FILE"
   if [[ -n "$state" && "$boot_id" == "$(cat /proc/sys/kernel/random/boot_id)" ]]; then
     echo "$state"
   else
