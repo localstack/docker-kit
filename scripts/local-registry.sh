@@ -19,6 +19,7 @@ readonly TLS_DIR="$REPO_ROOT/.work/registry-tls"
 readonly CONTAINER=lskit-registry
 readonly DATA_VOLUME=lskit-registry-data
 readonly PORT=5055
+readonly RENEW_BEFORE_SECONDS=$((7 * 24 * 60 * 60))
 
 main() {
   ensure_certificate
@@ -34,9 +35,20 @@ main() {
 }
 
 ensure_certificate() {
-  if [[ -f "$TLS_DIR/localhost.crt" ]]; then
+  local certificate="$TLS_DIR/localhost.crt"
+  if [[ -f "$certificate" ]] && openssl x509 -checkend "$RENEW_BEFORE_SECONDS" -noout -in "$certificate" >/dev/null; then
     return 0
   fi
+  if [[ -f "$certificate" ]]; then
+    mv "$certificate" "$certificate.old"
+    echo "The registry certificate expires in less than 7 days, so it is replaced."
+    echo "Remove the trust for the old one: security remove-trusted-cert $certificate.old"
+  fi
+  create_certificate
+  echo "Created $certificate. Trust it with the command in $0."
+}
+
+create_certificate() {
   mkdir -p "$TLS_DIR"
   openssl req -x509 -newkey rsa:2048 -nodes -days 90 -subj "/CN=localhost" \
     -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
@@ -44,7 +56,6 @@ ensure_certificate() {
     -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
     -addext "extendedKeyUsage=serverAuth" \
     -keyout "$TLS_DIR/localhost.key" -out "$TLS_DIR/localhost.crt" 2>/dev/null
-  echo "created $TLS_DIR/localhost.crt. Trust it with the command in $0."
 }
 
 main "$@"
