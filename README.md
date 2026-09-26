@@ -35,6 +35,14 @@ the LocalStack MCP server with the agent.
 
 ## Quick start
 
+> [!IMPORTANT]
+> The images are not on Docker Hub yet. Until the first release, the
+> `docker.io/localstack/...` references fail with `401 unauthorized`, because
+> Docker Hub reports a missing repository that way. To use the kits before
+> the release, build them into a local registry (see
+> [Development](docs/development.md)) and replace `docker.io` with
+> `localhost:5055` in the commands below.
+
 Put the token in your shell. The `-e` flag copies it into the sandbox.
 
 ```console
