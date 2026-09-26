@@ -8,7 +8,7 @@ This page tells you what the kit isolates, what it does not isolate, and why.
 | --- | --- | --- |
 | Your host files and processes | Yes | The Docker Sandboxes microVM. The agent sees only the workspace that you mount. |
 | Your AWS accounts | Partly | The sandbox gets no AWS credentials. The AWS tools point at LocalStack. The kit does not block AWS endpoints. |
-| A LocalStack that runs on your host | Yes | The kit sends LocalStack hostnames around the sandbox proxy and denies them at the proxy. |
+| A LocalStack or other service on your host | Partly | The kit denies loopback names at the sandbox proxy. Under the `allow-all` policy, another name that resolves to `127.0.0.1` still reaches the host. |
 | Your agent credentials | Yes | Docker Sandboxes keeps them on the host. The sandbox gets a placeholder. |
 | Your LocalStack auth token | No | The token must be in the sandbox. The agent can read it. |
 
@@ -61,19 +61,27 @@ $ sbx policy deny network --sandbox ls-claude '**.amazonaws.com'
 $ sbx policy deny network --sandbox ls-claude '**.aws.amazon.com'
 ```
 
-## LocalStack on the host
+## Services on the host
 
-`localhost.localstack.cloud` and its subdomains resolve to `127.0.0.1`. In
-the sandbox, HTTP clients send these names to the sandbox proxy, and the
-proxy runs on the host. Without the kit's rules, a request from the sandbox
-can reach a LocalStack that runs on your host.
+Through the sandbox proxy, loopback is the host. The host can run its own
+LocalStack or other local services. `localhost.localstack.cloud` and its
+subdomains resolve to `127.0.0.1`, so a client that sends these names to the
+proxy reaches the host.
 
-The kit prevents this in two ways:
+The kit does two things:
 
-- It adds these names to `NO_PROXY` in agent shells and in lstk, so clients
-  connect directly to the LocalStack in the sandbox.
-- It denies `localhost.localstack.cloud` and `**.localhost.localstack.cloud`
-  at the proxy. A client that ignores `NO_PROXY` gets HTTP 403.
+- It adds the LocalStack names to `NO_PROXY` and to the Java proxy bypass
+  list, for agent shells, lstk, and the MCP server. These clients connect
+  directly to the LocalStack in the sandbox.
+- It denies `localhost`, `127.0.0.0/8`, `::1`, `host.docker.internal`,
+  `localhost.localstack.cloud`, and `**.localhost.localstack.cloud` at the
+  proxy. A request for these names through the proxy gets HTTP 403.
+
+This stops accidental access. It does not stop an agent that tries on
+purpose: the proxy rules match names, so under the `allow-all` policy, any
+other name that resolves to `127.0.0.1`, such as `127.0.0.1.nip.io`, still
+reaches the host. The `balanced` and `deny-all` policies refuse names that no
+rule allows, so they close this path.
 
 ## Docker daemon setting
 
@@ -102,10 +110,11 @@ the agent needs.
 | `github.com`, `api.github.com`, `codeload.github.com`, `objects.githubusercontent.com`, `raw.githubusercontent.com` | Source downloads and Terraform modules |
 | `wings.crawlchat.app`, `us.i.posthog.com` | LocalStack MCP server: documentation search and analytics |
 
-Kit rules add to your policy. Under the `allow-all` policy, they have no
-effect. Under `balanced` or `deny-all`, they are the hosts that the sandbox
-can reach. Organization policy can override them. To see which requests the
-policy blocked, run `sbx policy log`.
+Kit allow rules add to your policy. Under the `allow-all` policy, they have
+no effect. Under `balanced` or `deny-all`, they are the hosts that the
+sandbox can reach. Organization policy can override them. Kit deny rules
+(see [Services on the host](#services-on-the-host)) apply under every policy.
+To see which requests the policy blocked, run `sbx policy log`.
 
 ## Telemetry
 
