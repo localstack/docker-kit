@@ -10,6 +10,10 @@ readonly LOG_FILE="$STATE_DIR/start.log"
 readonly LSTK_CONFIG="$HOME/.config/lstk/config.toml"
 readonly DOCKER_WAIT_SECONDS=180
 
+# The hook PATH comes from the workload, and some workloads leave out the kit
+# directory.
+export PATH="/opt/localstack-kit/bin:$PATH"
+
 main() {
   mkdir -p "$STATE_DIR"
   exec >>"$LOG_FILE" 2>&1
