@@ -1,0 +1,37 @@
+# Lints the scripts and builds every kit for both platforms. The sandbox tests
+# (make smoke, make project-config, make e2e) need KVM or Apple silicon, which
+# GitHub-hosted runners do not have, so they run on a developer machine.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shell scripts
+        run: scripts/lint.sh
+      - name: Check workflows
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -color
+
+  build:
+    name: Build kits
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      # A kit set can list only published kits, so the mixin goes to a local
+      # registry first. The build fails on the known ways to break a set,
+      # such as a component with different descriptors per platform.
+      - name: Start the local registry
+        run: scripts/local-registry.sh
+      - name: Build the mixin and the sets
+        run: scripts/build.sh --registry localhost:5055 --platform linux/amd64,linux/arm64
