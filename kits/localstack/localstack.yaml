@@ -1,0 +1,119 @@
+# syntax=docker/sandbox-kit:3
+schemaVersion: "3"
+kind: mixin
+displayName: LocalStack
+author: "LocalStack <info@localstack.cloud>"
+description: >-
+  LocalStack for AWS in the sandbox. lstk starts the emulator on boot. The kit
+  also adds the LocalStack MCP server, Terraform, AWS CDK, AWS SAM CLI, and
+  AWS CLI v2, all pointed at http://localhost:4566.
+licenses: [Apache-2.0]
+version: "0.1.0"
+
+args:
+  localstack_image:
+    default: localstack/localstack-pro:2026.8.4
+    pattern: '^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9][A-Za-z0-9._-]*)?$'
+    description: LocalStack image that lstk starts. The cached license is tied to its major.minor version.
+    env: LOCALSTACK_IMAGE_NAME
+  lstk_version:
+    default: "1.2.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: LSTK_VERSION
+  mcp_server_version:
+    default: "0.6.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: MCP_SERVER_VERSION
+  node_version:
+    default: "24.21.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: NODE_VERSION
+  terraform_version:
+    default: "1.16.4"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: TERRAFORM_VERSION
+  cdk_version:
+    default: "2.1143.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: CDK_VERSION
+  aws_cli_version:
+    default: "2.37.4"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: AWS_CLI_VERSION
+  sam_version:
+    default: "1.166.2"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: SAM_VERSION
+
+provides:
+  - "cloud.localstack/sandbox-kit"
+  - "lstk@${{ kit.args.lstk_version }}"
+  - "localstack-mcp-server@${{ kit.args.mcp_server_version }}"
+  - "terraform@${{ kit.args.terraform_version }}"
+  - "aws-cdk@${{ kit.args.cdk_version }}"
+  - "aws-cli@${{ kit.args.aws_cli_version }}"
+  - "sam-cli@${{ kit.args.sam_version }}"
+
+requires: ["deb/docker-ce"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # LocalStack license activation and product events
+          - api.localstack.cloud:443
+          - analytics.localstack.cloud:443
+          # LocalStack image pulls from Docker Hub
+          - registry-1.docker.io:443
+          - auth.docker.io:443
+          - index.docker.io:443
+          - production.cloudflare.docker.com:443
+          # Lambda runtime images from Amazon ECR Public
+          - public.ecr.aws:443
+          - d2glxqk2uabbnd.cloudfront.net:443
+          # Terraform providers and modules
+          - registry.terraform.io:443
+          - releases.hashicorp.com:443
+          # Package installs for CDK apps, Lambda code, and tests
+          - registry.npmjs.org:443
+          - pypi.org:443
+          - files.pythonhosted.org:443
+          - github.com:443
+          - api.github.com:443
+          - codeload.github.com:443
+          - objects.githubusercontent.com:443
+          - raw.githubusercontent.com:443
+          # LocalStack MCP server: docs search and product analytics
+          - wings.crawlchat.app:443
+          - us.i.posthog.com:443
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      files:
+        - path: /home/agent/.config/lstk/config.toml
+          mode: "0644"
+          description: lstk settings for the sandbox emulator
+          content: |
+            [[containers]]
+            type = "aws"
+            image = "${{ kit.args.localstack_image }}"
+            port = "4566"
+            container_name = "localstack-main"
+            env = ["sandbox"]
+
+            [env.sandbox]
+            GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
+            SKIP_SSL_CERT_DOWNLOAD = "1"
+
+            [cli]
+            check_for_update_on_startup = false
+      startup:
+        - command: /opt/localstack-kit/bin/lskit-start
+          background: true
+          env: [LOCALSTACK_AUTH_TOKEN, AWS_ENDPOINT_URL, DOCKER_HOST, LSTK_KEYRING]
+          description: Start LocalStack with lstk
+
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      contentFile: ./context.md
