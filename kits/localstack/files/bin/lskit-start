@@ -66,6 +66,7 @@ run_lstk_start() {
   local config="$1"
   printf '%s\n' "$config" >"$STATE_DIR/config-path"
   apply_kit_defaults "$config"
+  note_host_publishing "$config"
   record_status starting "lstk start is running with $config."
   if (cd "$(start_directory "$config")" && lstk --config "$config" --non-interactive start); then
     record_emulator "$config"
@@ -94,6 +95,14 @@ apply_kit_defaults() {
     fi
     export "LOCALSTACK_$setting"
   done
+}
+
+# sbx -p reaches only ports that listen on all interfaces. lstk binds the
+# emulator to loopback unless the config sets GATEWAY_LISTEN.
+note_host_publishing() {
+  if ! grep -q -E '^[[:space:]]*GATEWAY_LISTEN[[:space:]]*=.*0\.0\.0\.0' "$1"; then
+    echo "note: $1 binds LocalStack to loopback, so sbx -p cannot publish it to the host. To publish it, add GATEWAY_LISTEN = \"0.0.0.0:4566,0.0.0.0:443\" to its env profile."
+  fi
 }
 
 # The MCP server must use the container and image that lstk started. A project
