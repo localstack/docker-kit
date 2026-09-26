@@ -16,6 +16,7 @@ scripts/
   build.sh               build and push the mixin and the sets
   local-registry.sh      HTTPS registry for local tests
   smoke.sh               checks without an agent prompt
+  project-config.sh      checks for a project lstk config and LSKIT_LSTK_CONFIG
   headless.sh            agent task with checks from outside the agent
 ```
 
@@ -69,11 +70,12 @@ only.
    $ make build-local
    ```
 
-5. Run the checks. `smoke` uses no model credits. `e2e` gives the agent a
-   task and uses model credits.
+5. Run the checks. `smoke` and `project-config` use no model credits. `e2e`
+   gives the agent a task and uses model credits.
 
    ```console
    $ make smoke AGENT=claude
+   $ make project-config AGENT=claude
    $ make e2e AGENT=claude
    ```
 
