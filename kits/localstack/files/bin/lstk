@@ -29,6 +29,7 @@ needs_active_config() {
       return 1
     fi
   done
+  return 0
 }
 
 main "$@"
