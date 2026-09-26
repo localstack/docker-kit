@@ -16,9 +16,10 @@ build-local: registry
 release:
 	scripts/build.sh
 
-# Lets sbx load kits from the local registry. The default allows docker.io only.
+# Lets sbx load kits from the local registry. The default allows docker.io
+# only. Other allowed sources stay in the list.
 sbx-allow-local:
-	sbx settings set kit.allowedSources '["docker.io/","$(LOCAL_REGISTRY)/localstack/"]'
+	scripts/sbx-allow-source.sh $(LOCAL_REGISTRY)/localstack/
 
 # Checks a set without an agent prompt. Uses no model credits.
 smoke:
