@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Starts LocalStack with lstk each time the sandbox boots.
+# The sandbox runs this as a background startup hook. It must be safe to run
+# again, and it must exit 0, because a failed hook stops the sandbox boot.
+set -uo pipefail
+
+readonly STATE_DIR=/tmp/localstack-kit
+readonly STATUS_FILE="$STATE_DIR/status"
+readonly LOG_FILE="$STATE_DIR/start.log"
+readonly LSTK_CONFIG="$HOME/.config/lstk/config.toml"
+readonly DOCKER_WAIT_SECONDS=180
+
+main() {
+  mkdir -p "$STATE_DIR"
+  exec >>"$LOG_FILE" 2>&1
+  start_localstack
+  return 0
+}
+
+start_localstack() {
+  if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
+    record_status missing-token "LOCALSTACK_AUTH_TOKEN is not set. Create the sandbox again with -e LOCALSTACK_AUTH_TOKEN."
+    return
+  fi
+  if ! wait_for_docker; then
+    record_status docker-unavailable "Docker did not start in ${DOCKER_WAIT_SECONDS} seconds."
+    return
+  fi
+  record_status starting "lstk start is running."
+  if (cd "$HOME" && lstk --config "$LSTK_CONFIG" --non-interactive start); then
+    record_status running "LocalStack is ready at ${AWS_ENDPOINT_URL:-http://localhost:4566}."
+  else
+    record_status failed "lstk start failed. Read $LOG_FILE."
+  fi
+}
+
+wait_for_docker() {
+  local waited_seconds=0
+  until docker info >/dev/null 2>&1; do
+    if ((waited_seconds >= DOCKER_WAIT_SECONDS)); then
+      return 1
+    fi
+    sleep 2
+    waited_seconds=$((waited_seconds + 2))
+  done
+}
+
+record_status() {
+  printf '%s\n' "$1" >"$STATUS_FILE"
+  printf '%s [%s] %s\n' "$(date -u +%FT%TZ)" "$1" "$2"
+}
+
+main "$@"
