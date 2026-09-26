@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Registers the LocalStack MCP server with one agent: claude or codex.
+# The per-agent kit sets run this after the agent kit writes its own config,
+# so the entry goes into the final file. It is safe to run again.
+set -euo pipefail
+
+readonly SERVER_NAME=localstack
+readonly LAUNCHER=/opt/localstack-kit/bin/lskit-mcp
+
+main() {
+  case "${1:-}" in
+    claude) register_with_claude ;;
+    codex) register_with_codex ;;
+    *)
+      echo "usage: lskit-register-mcp claude|codex" >&2
+      exit 2
+      ;;
+  esac
+}
+
+register_with_claude() {
+  export PATH="$HOME/.local/bin:$PATH"
+  if claude mcp get "$SERVER_NAME" >/dev/null 2>&1; then
+    return 0
+  fi
+  claude mcp add "$SERVER_NAME" --scope user -- "$LAUNCHER"
+}
+
+# Codex gives stdio MCP servers only a short list of environment variables,
+# so env_vars names the ones that the LocalStack MCP server reads.
+register_with_codex() {
+  local config="$HOME/.codex/config.toml"
+  mkdir -p "$(dirname "$config")"
+  touch "$config"
+  if grep -q "^\[mcp_servers\.$SERVER_NAME\]" "$config"; then
+    return 0
+  fi
+  cat >>"$config" <<EOF
+
+[mcp_servers.$SERVER_NAME]
+command = "$LAUNCHER"
+env_vars = ["LOCALSTACK_AUTH_TOKEN", "LOCALSTACK_IMAGE_NAME", "MAIN_CONTAINER_NAME", "DOCKER_HOST"]
+startup_timeout_sec = 60
+EOF
+}
+
+main "$@"
