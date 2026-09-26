@@ -1,0 +1,5 @@
+# BuildKit settings for the lskit builder. The local test registry
+# (make registry) serves plain HTTP.
+[registry."localhost:5055"]
+  http = true
+  insecure = true
