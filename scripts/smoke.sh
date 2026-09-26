@@ -40,22 +40,9 @@ check_proxy_refuses_localstack_host() {
 
 check_mcp_tools() {
   local tool_count
-  tool_count="$(in_sandbox "$(mcp_tools_list_command)" | grep -o '"name":"localstack-[a-z-]*"' | sort -u | wc -l)"
+  tool_count="$(in_sandbox "$(mcp_request_command tools/list '{}')" | grep -o '"name":"localstack-[a-z-]*"' | sort -u | wc -l)"
   echo "tools: $tool_count"
   ((tool_count >= 10))
-}
-
-# Sends the MCP handshake and a tools/list request over stdio. The sleep holds
-# stdin open so that the server answers before it sees end of input.
-mcp_tools_list_command() {
-  cat <<'EOF'
-{
-  echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"lskit-smoke","version":"0"}}}'
-  echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
-  echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-  sleep 20
-} | timeout 40 lskit-mcp 2>/dev/null
-EOF
 }
 
 check_mcp_registration() {

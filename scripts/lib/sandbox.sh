@@ -75,12 +75,14 @@ kit_set_ref() {
 
 # Creates the sandbox without attaching to it. A bare -e name copies the
 # token from this shell, so the value does not show in the process list.
+# Arguments after the workspace go to sbx create as flags.
 create_sandbox() {
   local purpose="$1" workspace="$2"
+  shift 2
   sandbox_name="lskit-$purpose-$agent-$RANDOM"
   trap remove_sandbox EXIT
   echo "==> creating $sandbox_name from $(kit_set_ref)"
-  sbx create --name "$sandbox_name" -e LOCALSTACK_AUTH_TOKEN "$(kit_set_ref)" "$workspace"
+  sbx create --name "$sandbox_name" -e LOCALSTACK_AUTH_TOKEN "$@" "$(kit_set_ref)" "$workspace"
   start_keepalive_session
 }
 
@@ -95,6 +97,7 @@ start_keepalive_session() {
 remove_sandbox() {
   if [[ -n "$keepalive_pid" ]]; then
     kill "$keepalive_pid" 2>/dev/null || true
+    keepalive_pid=""
   fi
   if [[ "$keep_sandbox" == true ]]; then
     echo "==> kept $sandbox_name"
@@ -120,6 +123,21 @@ wait_for_localstack() {
   done
   in_sandbox 'tail -n 40 /tmp/localstack-kit/start.log' >&2 || true
   return 1
+}
+
+# Prints a pipeline that sends the MCP handshake and one request to the
+# LocalStack MCP server over stdio. The sleep holds stdin open so that the
+# server answers before it sees end of input.
+mcp_request_command() {
+  local method="$1" params="$2"
+  cat <<EOF
+{
+  echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"lskit-test","version":"0"}}}'
+  echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  echo '{"jsonrpc":"2.0","id":2,"method":"$method","params":$params}'
+  sleep 20
+} | timeout 40 lskit-mcp 2>/dev/null
+EOF
 }
 
 run_check() {
