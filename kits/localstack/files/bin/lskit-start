@@ -2,13 +2,21 @@
 # Starts LocalStack with lstk each time the sandbox boots.
 # The sandbox runs this as a background startup hook. It must be safe to run
 # again, and it must exit 0, because a failed hook stops the sandbox boot.
+#
+# The lstk config comes from the first of:
+#   1. LSKIT_LSTK_CONFIG, a path that is absolute or relative to the workspace
+#   2. <workspace>/.lstk/config.toml, the project config of lstk
+#   3. ~/.config/lstk/config.toml, which the kit writes
 set -uo pipefail
 
 readonly STATE_DIR=/tmp/localstack-kit
 readonly STATUS_FILE="$STATE_DIR/status"
 readonly LOG_FILE="$STATE_DIR/start.log"
-readonly LSTK_CONFIG="$HOME/.config/lstk/config.toml"
+readonly KIT_CONFIG="$HOME/.config/lstk/config.toml"
 readonly DOCKER_WAIT_SECONDS=180
+# The kit config sets these for the sandbox. A project config may leave them
+# out, so they go to LocalStack as LOCALSTACK_* variables instead.
+readonly KIT_DEFAULTS=(LAMBDA_IGNORE_ARCHITECTURE=1 SKIP_SSL_CERT_DOWNLOAD=1)
 
 # The hook PATH comes from the workload, and some workloads leave out the kit
 # directory.
@@ -22,20 +30,68 @@ main() {
 }
 
 start_localstack() {
+  local config
   if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
     record_status missing-token "LOCALSTACK_AUTH_TOKEN is not set. Create the sandbox again with -e LOCALSTACK_AUTH_TOKEN."
+    return
+  fi
+  config="$(active_config)"
+  if [[ ! -f "$config" ]]; then
+    record_status config-missing "LSKIT_LSTK_CONFIG names $config, and the file does not exist."
     return
   fi
   if ! wait_for_docker; then
     record_status docker-unavailable "Docker did not start in ${DOCKER_WAIT_SECONDS} seconds."
     return
   fi
-  record_status starting "lstk start is running."
-  if (cd "$HOME" && lstk --config "$LSTK_CONFIG" --non-interactive start); then
-    record_status running "LocalStack is ready at ${AWS_ENDPOINT_URL:-http://localhost:4566}."
+  run_lstk_start "$config"
+}
+
+active_config() {
+  local workspace="${WORKSPACE_DIR:-$PWD}"
+  if [[ -n "${LSKIT_LSTK_CONFIG:-}" ]]; then
+    case "$LSKIT_LSTK_CONFIG" in
+      /*) echo "$LSKIT_LSTK_CONFIG" ;;
+      *) echo "$workspace/$LSKIT_LSTK_CONFIG" ;;
+    esac
+  elif [[ -f "$workspace/.lstk/config.toml" ]]; then
+    echo "$workspace/.lstk/config.toml"
   else
-    record_status failed "lstk start failed. Read $LOG_FILE."
+    echo "$KIT_CONFIG"
   fi
+}
+
+run_lstk_start() {
+  local config="$1"
+  printf '%s\n' "$config" >"$STATE_DIR/config-path"
+  apply_kit_defaults "$config"
+  record_status starting "lstk start is running with $config."
+  if (cd "$(start_directory "$config")" && lstk --config "$config" --non-interactive start); then
+    record_status running "LocalStack is ready. lstk config: $config."
+  else
+    record_status failed "lstk start failed with $config. Read $LOG_FILE."
+  fi
+}
+
+# A project config can use paths relative to the project, so lstk starts in
+# the workspace for any config other than the kit config.
+start_directory() {
+  if [[ "$1" == "$KIT_CONFIG" ]]; then
+    echo "$HOME"
+  else
+    echo "${WORKSPACE_DIR:-$HOME}"
+  fi
+}
+
+apply_kit_defaults() {
+  local config="$1" setting name
+  for setting in "${KIT_DEFAULTS[@]}"; do
+    name="${setting%%=*}"
+    if grep -q -E "^[[:space:]]*${name}[[:space:]]*=" "$config" || [[ -n "$(printenv "LOCALSTACK_$name")" ]]; then
+      continue
+    fi
+    export "LOCALSTACK_$setting"
+  done
 }
 
 wait_for_docker() {
