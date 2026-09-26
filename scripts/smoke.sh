@@ -23,6 +23,8 @@ main() {
     'aws --endpoint-url http://localhost.localstack.cloud:4566 s3 ls | grep -q lskit-smoke'
   run_check "The proxy refuses LocalStack hostnames" check_proxy_refuses_localstack_host
   run_check "tflocal runs Terraform through lstk" in_sandbox 'tflocal version'
+  run_check "Docker pulls an AWS Lambda base image" in_sandbox \
+    'docker pull -q public.ecr.aws/lambda/python:3.12'
   run_check "MCP server lists LocalStack tools" check_mcp_tools
   run_check "MCP server is registered with $agent" check_mcp_registration
   report_results
