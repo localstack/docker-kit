@@ -1,0 +1,30 @@
+# syntax=docker/sandbox-kit:3
+schemaVersion: "3"
+kind: set
+displayName: Codex with LocalStack
+author: "LocalStack <info@localstack.cloud>"
+description: >-
+  Docker's Codex workload with the LocalStack mixin. The LocalStack MCP server
+  is registered with Codex.
+licenses: [Apache-2.0]
+version: "0.1.0"
+
+args:
+  localstack_image:
+    default: localstack/localstack-pro:2026.8.4
+    pattern: '^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9][A-Za-z0-9._-]*)?$'
+    description: LocalStack image that lstk starts. The cached license is tied to its major.minor version.
+
+kits:
+  - ref: docker.io/docker/sbx-kit-codex:0.155.1
+  - ref: docker.io/localstack/sbx-kit-localstack:0.1.0
+    args:
+      localstack_image: ${{ kit.args.localstack_image }}
+
+capabilities:
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: /opt/localstack-kit/bin/lskit-register-mcp codex
+          user: agent
+          description: Register the LocalStack MCP server with Codex
