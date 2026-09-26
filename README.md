@@ -1,0 +1,138 @@
+# LocalStack kit for Docker Sandboxes
+
+This repository has [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/)
+kits that run a coding agent with LocalStack in the same sandbox. The agent
+can build, deploy, and test AWS applications against LocalStack. It does not
+get AWS credentials.
+
+When the sandbox boots, lstk starts LocalStack. The kit also adds the
+LocalStack MCP server, Terraform, AWS CDK, AWS SAM CLI, and AWS CLI v2, and
+points them at `http://localhost:4566`.
+
+| Kit | Image | Use |
+| --- | --- | --- |
+| Claude Code set | `docker.io/localstack/sbx-localstack-claude` | `sbx run` |
+| Codex set | `docker.io/localstack/sbx-localstack-codex` | `sbx run` |
+| LocalStack mixin | `docker.io/localstack/sbx-kit-localstack` | `--kit` on a v3 workload |
+
+The sets combine Docker's agent kit with the LocalStack mixin, and register
+the LocalStack MCP server with the agent.
+
+## Requirements
+
+- `sbx` 0.45 or later, signed in with `sbx login`. See
+  [Install Docker Sandboxes](https://docs.docker.com/ai/sandboxes/install/).
+  Local sandboxes need macOS 14 or later on Apple silicon, Windows 11 with
+  Windows Hypervisor Platform, or Ubuntu 24.04 or later with KVM.
+- A LocalStack auth token. Read [Security](docs/security.md) before you
+  choose which token to use.
+- An agent login:
+  - Claude Code: a Claude subscription (use `/login` in the sandbox) or an
+    Anthropic API key (`sbx secret set anthropic`).
+  - Codex: a ChatGPT login (`sbx secret set openai --oauth`) or an OpenAI API
+    key (`sbx secret set openai`).
+- About 5 GB of free disk space for each sandbox.
+
+## Quick start
+
+Put the token in your shell. The `-e` flag copies it into the sandbox.
+
+```console
+$ export LOCALSTACK_AUTH_TOKEN=<your-token>
+```
+
+Start Claude Code with LocalStack in the current directory:
+
+```console
+$ sbx run --name ls-claude -e LOCALSTACK_AUTH_TOKEN -p 4566:4566 \
+    docker.io/localstack/sbx-localstack-claude:0.1.0 .
+```
+
+Start Codex with LocalStack:
+
+```console
+$ sbx run --name ls-codex -e LOCALSTACK_AUTH_TOKEN -p 4566:4566 \
+    docker.io/localstack/sbx-localstack-codex:0.1.0 .
+```
+
+On the first run, `sbx` asks you to approve the agent credential for this
+kit. The first start also pulls the kit and the LocalStack image, so it can
+take some minutes.
+
+`-p 4566:4566` makes LocalStack available on your host, for example for the
+[LocalStack Web App](https://app.localstack.cloud). If LocalStack already runs
+on your host, use a different host port, such as `-p 4567:4566`.
+
+To go back to a sandbox later, give only its name:
+
+```console
+$ sbx run --name ls-claude
+```
+
+## Use LocalStack in the sandbox
+
+The agent gets instructions for LocalStack in its context file (`CLAUDE.md`
+or `AGENTS.md`). In short:
+
+- `lstk status` shows if LocalStack runs. `lstk start` starts it.
+- `AWS_ENDPOINT_URL=http://localhost:4566` and the `test` credentials are
+  set, so the AWS CLI and the AWS SDKs use LocalStack.
+- `tflocal`, `cdklocal`, `samlocal`, and `awslocal` run Terraform, AWS CDK,
+  AWS SAM, and the AWS CLI through lstk.
+- The `localstack` MCP server gives tools for deployment, logs, IAM policy
+  analysis, fault injection, and state.
+
+### Keep state
+
+`sbx` stops a local sandbox 30 seconds after the last session ends. When the
+sandbox starts again, LocalStack starts with no resources. To keep resources,
+save a snapshot in the workspace before you leave the session:
+
+```console
+$ lstk snapshot save ./localstack.snapshot
+$ lstk snapshot load ./localstack.snapshot
+```
+
+### Choose the LocalStack version
+
+The kit pins the LocalStack image. To use another image, set the
+`localstack_image` argument when you create the sandbox:
+
+```console
+$ sbx run --name ls-claude -e LOCALSTACK_AUTH_TOKEN \
+    --kit-arg localstack_image=localstack/localstack-pro:2026.8 \
+    docker.io/localstack/sbx-localstack-claude:0.1.0 .
+```
+
+### Add the mixin to another v3 workload
+
+You can add the mixin to a v3 workload yourself. The built-in shortcuts, such
+as `sbx run claude`, use v2 kits and do not accept v3 mixins.
+
+```console
+$ sbx run -e LOCALSTACK_AUTH_TOKEN docker.io/docker/sbx-kit-claude:2.1.278 \
+    --kit docker.io/localstack/sbx-kit-localstack:0.1.0 .
+```
+
+The sets register the MCP server. With your own combination, register it one
+time in the sandbox with `lskit-register-mcp claude` or
+`lskit-register-mcp codex`.
+
+## Limits
+
+- The kit supports local sandboxes. Docker Cloud Sandboxes are not
+  supported.
+- The agent can read the LocalStack auth token. See [Security](docs/security.md).
+- `sbx` 0.45 ignores the kit's request to keep the sandbox running, so
+  LocalStack stops when you leave the agent.
+- The `--kit` and `--kit-arg` flags are experimental in `sbx` 0.45.
+
+## Documentation
+
+- [Security](docs/security.md): token handling, network rules, and telemetry.
+- [Troubleshooting](docs/troubleshooting.md): known problems and fixes.
+- [Development](docs/development.md): build and test the kits.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
