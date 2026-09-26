@@ -101,6 +101,23 @@ $ lstk snapshot save ./localstack.snapshot
 $ lstk snapshot load ./localstack.snapshot
 ```
 
+### Configure LocalStack
+
+lstk sends each `LOCALSTACK_*` variable to the LocalStack container without
+the prefix. Set the variables when you create the sandbox. For example, this
+turns on debug logs and IAM enforcement:
+
+```console
+$ sbx run --name ls-claude -e LOCALSTACK_AUTH_TOKEN \
+    -e LOCALSTACK_DEBUG=1 -e LOCALSTACK_ENFORCE_IAM=1 \
+    docker.io/localstack/sbx-localstack-claude:0.1.0 .
+```
+
+The values apply at each start, also when the agent runs `lstk start` or
+`lstk restart`. See the
+[LocalStack configuration reference](https://docs.localstack.cloud/references/configuration/)
+for the variables.
+
 ### Choose the LocalStack version
 
 The kit pins the LocalStack image. To use another image, set the
