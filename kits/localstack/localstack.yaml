@@ -117,6 +117,7 @@ capabilities:
             [env.sandbox]
             GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
             SKIP_SSL_CERT_DOWNLOAD = "1"
+            LAMBDA_IGNORE_ARCHITECTURE = "1"
 
             [cli]
             check_for_update_on_startup = false
