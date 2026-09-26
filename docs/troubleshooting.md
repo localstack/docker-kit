@@ -14,6 +14,7 @@ $ sbx exec ls-claude bash -lc 'lskit-status; tail -n 40 /tmp/localstack-kit/star
 | `starting` | lstk is pulling the image or starting the container. The first pull takes some minutes. |
 | `running` | LocalStack is ready. |
 | `missing-token` | The sandbox has no `LOCALSTACK_AUTH_TOKEN`. Create the sandbox again with `-e LOCALSTACK_AUTH_TOKEN`. |
+| `config-missing` | `LSKIT_LSTK_CONFIG` names a file that does not exist. The path is absolute or relative to the workspace. |
 | `docker-unavailable` | Docker in the sandbox did not start in 180 seconds. |
 | `failed` | lstk start failed. Read the log. |
 
@@ -82,6 +83,18 @@ lstk reads `AWS_ENDPOINT_URL` as an instruction to use a remote emulator. The
 `lstk` command of the kit (`/opt/localstack-kit/bin/lstk`) removes the
 variable before it runs lstk. This error occurs only if you run the lstk
 binary directly.
+
+## sbx -p does not reach LocalStack
+
+`sbx -p` reaches only ports that listen on all interfaces in the sandbox. The
+kit config binds LocalStack to all interfaces. A project config
+(`.lstk/config.toml` or `LSKIT_LSTK_CONFIG`) binds it to loopback, unless it
+sets `GATEWAY_LISTEN`. The start log then has a note. Add this line to the
+env profile of the project config, and run `lstk restart`:
+
+```toml
+GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
+```
 
 ## Port 4566 is in use on the host
 
