@@ -16,7 +16,7 @@ args:
     description: LocalStack image that lstk starts. The cached license is tied to its major.minor version.
 
 kits:
-  - ref: docker.io/docker/sbx-kit-codex:0.155.1
+  - ref: docker.io/docker/sbx-kit-codex:0.157.0
   - ref: docker.io/localstack/sbx-kit-localstack:0.1.0
     args:
       localstack_image: ${{ kit.args.localstack_image }}
