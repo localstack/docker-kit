@@ -1,7 +1,9 @@
 LOCAL_REGISTRY ?= localhost:5055
 LOCAL_PLATFORM ?= linux/$(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+REGISTRY ?= $(LOCAL_REGISTRY)
+AGENT ?= claude
 
-.PHONY: registry build-local release sbx-allow-local
+.PHONY: registry build-local release sbx-allow-local smoke e2e
 
 # Starts an HTTPS registry for kit tests. Kit sets can only list published
 # kits, so local builds push the mixin here first.
@@ -17,3 +19,11 @@ release:
 # Lets sbx load kits from the local registry. The default allows docker.io only.
 sbx-allow-local:
 	sbx settings set kit.allowedSources '["docker.io/","$(LOCAL_REGISTRY)/localstack/"]'
+
+# Checks a set without an agent prompt. Uses no model credits.
+smoke:
+	scripts/smoke.sh $(AGENT) --registry $(REGISTRY)
+
+# Gives the agent a Terraform task and checks the result. Uses model credits.
+e2e:
+	scripts/headless.sh $(AGENT) --registry $(REGISTRY)
