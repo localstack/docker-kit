@@ -66,8 +66,15 @@ Lessons from building the kits in this repo. Scopes for commits here: kit, scrip
 
 - Build kits with the lskit docker-container builder (scripts/build.sh). The docker driver with the classic image store (OrbStack, older Docker Desktop) pushes Docker v2 manifests. These drop the OCI annotation that holds the kit descriptor, so sbx does not see a kit.
 - A kit set can only list published kits. Test sets against the local registry (make registry, make build-local).
-- The local registry uses port 5055. On macOS, AirPlay Receiver holds port 5000.
+- The local registry uses port 5055 and HTTPS. sbx pulls kits over HTTPS only, and on macOS AirPlay Receiver holds port 5000.
 - A set cannot re-export a kit arg that has env:. Put create-time values in lifecycle files instead, then read the file.
 - sbx kit validate cannot check a v3 source directory without the kit builder. A docker buildx build of the descriptor runs the same validation.
 - Startup hooks must exit 0. A failed hook stops the sandbox boot.
 - Codex passes only a short list of variables to stdio MCP servers. Name the others in env_vars.
+- sbx builds a local kit directory (--kit ./kits/localstack) with the default Buildx builder. On OrbStack, set BUILDX_BUILDER=lskit.
+- Kits from a third-party publisher need an approved credential binding. sbx asks only in a terminal, so approve once with an interactive sbx run before unattended tests.
+- sbx 0.45 stops a local sandbox 30 seconds after the last session and ignores long-running@1. Tests keep an idle sbx exec session open.
+- lstk treats AWS_ENDPOINT_URL as a remote emulator and refuses local commands. The kit's lstk wrapper removes it.
+- localhost.localstack.cloud goes through the sandbox proxy unless it is in NO_PROXY, and the proxy resolves it on the host. Never remove the kit's NO_PROXY snippet or deny rules.
+- The sandbox template sets GODEBUG=tarinsecurepath=0, which breaks AWS Lambda base image pulls. The kit's dockerd wrapper relaxes it for dockerd only.
+- Zero-filled files in a pulled image mean the host disk was full (the sandbox log shows I/O errors on vdd). Check df before long test runs, and prune the lskit builder cache after builds.
