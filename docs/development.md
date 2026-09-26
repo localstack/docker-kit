@@ -90,19 +90,63 @@ The builds use a `docker-container` Buildx builder named `lskit`. The
 holds the kit descriptor. The builder cache can grow to about 10 GB. Remove
 it with `docker buildx prune --builder lskit --all`.
 
+## CI
+
+`.github/workflows/ci.yaml` runs on each push to `main` and on each pull
+request:
+
+- `scripts/lint.sh`: shellcheck on every shell script, and actionlint on the
+  workflows.
+- A build of the mixin and the sets for `linux/amd64` and `linux/arm64`
+  through a local registry, as in `make build-local`.
+
+The sandbox tests need KVM or Apple silicon, so run `make smoke`,
+`make project-config`, and `make e2e` on your machine before a release.
+
 ## Release
 
-Build both platforms and push to Docker Hub. You need push access to the
-`localstack` namespace.
+1. Set the new version on all kits, and add an entry to `CHANGELOG.md`:
+
+   ```console
+   $ make bump VERSION=0.2.0
+   ```
+
+2. Run the sandbox tests against a local build (see above).
+3. Commit, then push a tag that matches the version:
+
+   ```console
+   $ git tag v0.2.0
+   $ git push origin v0.2.0
+   ```
+
+   `.github/workflows/release.yaml` builds both platforms, pushes the kits
+   to `docker.io/localstack`, and signs them with the GitHub OIDC token
+   (keyless). It needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
+   secrets in the `release` environment. This workflow has not run yet.
+
+`scripts/build.sh` stops if the versions of the kits do not match, and if a
+tag already exists on Docker Hub. Published tags must not change.
+
+To release by hand, you need push access to the `localstack` namespace:
 
 ```console
 $ docker login
 $ make release
+$ sbx kit sign docker.io/localstack/sbx-kit-localstack:0.2.0
 ```
 
-The build pushes the mixin first, because the sets pull it from the registry.
-Increase the `version:` field in each descriptor for a new release, and
-update the mixin tag in the `kits:` list of each set.
+Without `--key`, `sbx kit sign` signs keyless and opens a browser login.
+With `--key key.pem`, it signs with an unencrypted PEM key.
 
-To sign the images, use `sbx kit sign` or cosign after the push. Users can
-then verify them with `sbx kit verify`.
+Users verify a keyless signature from the release workflow like this:
+
+```console
+$ sbx kit verify docker.io/localstack/sbx-localstack-claude:0.2.0 \
+    --certificate-identity 'https://github.com/<owner>/<repo>/.github/workflows/release.yaml@refs/tags/v0.2.0' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+For a key-based signature, they pass `--key cosign.pub` instead.
+
+When the GitHub repository exists, add its URL as `sourceUrl` to the three
+descriptors.
