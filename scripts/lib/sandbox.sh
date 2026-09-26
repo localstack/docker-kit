@@ -113,23 +113,32 @@ remove_sandbox() {
   sbx rm --force "$sandbox_name" >/dev/null 2>&1 || true
 }
 
+# A non-login shell, because the first login shell of a new sandbox prints
+# the template banner on stdout. BASH_ENV still loads the kit environment.
 in_sandbox() {
-  sbx exec "$sandbox_name" bash -lc "$1"
+  sbx exec "$sandbox_name" bash -c "$1"
 }
 
 wait_for_localstack() {
-  local waited_seconds=0 status
+  if [[ "$(wait_for_boot_state)" == running ]]; then
+    return 0
+  fi
+  in_sandbox 'tail -n 40 /tmp/localstack-kit/start.log' >&2 || true
+  return 1
+}
+
+# Waits until the start at boot ends, and prints its state.
+wait_for_boot_state() {
+  local waited_seconds=0 state=starting
   while ((waited_seconds < LOCALSTACK_WAIT_SECONDS)); do
-    status="$(in_sandbox 'lskit-status' || true)"
-    case "$status" in
-      running) return 0 ;;
-      failed | missing-token | config-missing | docker-unavailable) break ;;
-    esac
+    state="$(in_sandbox 'lskit-status' | tail -n 1 || true)"
+    if [[ -n "$state" && "$state" != starting ]]; then
+      break
+    fi
     sleep 5
     waited_seconds=$((waited_seconds + 5))
   done
-  in_sandbox 'tail -n 40 /tmp/localstack-kit/start.log' >&2 || true
-  return 1
+  echo "$state"
 }
 
 # Prints a pipeline that sends the MCP handshake and one request to the
