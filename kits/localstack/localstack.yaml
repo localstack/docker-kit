@@ -125,6 +125,10 @@ capabilities:
           env: [LOCALSTACK_AUTH_TOKEN, AWS_ENDPOINT_URL, DOCKER_HOST, LSTK_KEYRING]
           description: Start LocalStack with lstk
 
+  # LocalStack is a service. Without this, the sandbox stops when the last
+  # session ends, and LocalStack loses its state between sbx exec calls.
+  - type: com.docker.sandbox/long-running@1
+
   - type: com.docker.sandbox/agent-context@1
     config:
       contentFile: ./context.md
