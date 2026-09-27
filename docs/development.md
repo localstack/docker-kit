@@ -142,11 +142,8 @@ Users verify a keyless signature from the release workflow like this:
 
 ```console
 $ sbx kit verify docker.io/localstack/sbx-localstack-claude:0.2.0 \
-    --certificate-identity 'https://github.com/<owner>/<repo>/.github/workflows/release.yaml@refs/tags/v0.2.0' \
+    --certificate-identity 'https://github.com/localstack/docker-kit/.github/workflows/release.yaml@refs/tags/v0.2.0' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 For a key-based signature, they pass `--key cosign.pub` instead.
-
-When the GitHub repository exists, add its URL as `sourceUrl` to the three
-descriptors.
