@@ -76,9 +76,10 @@ Lessons from building the kits in this repo. Scopes for commits here: kit, scrip
 - sbx 0.45 stops a local sandbox 30 seconds after the last session and ignores long-running@1. Tests keep an idle sbx exec session open.
 - lstk treats AWS_ENDPOINT_URL as a remote emulator and refuses local commands. The kit's lstk wrapper removes it.
 - localhost.localstack.cloud goes through the sandbox proxy unless it is in NO_PROXY, and the proxy resolves it on the host. Never remove the kit's NO_PROXY snippet or deny rules.
-- The sandbox template sets GODEBUG=tarinsecurepath=0, which breaks AWS Lambda base image pulls. The kit's dockerd wrapper relaxes it for dockerd only.
+- The sandbox template sets GODEBUG=tarinsecurepath=0, which breaks AWS Lambda base image pulls. The kit's dockerd wrapper relaxes it for dockerd and the processes that dockerd starts: containerd, which unpacks the layers, and the container shims.
 - Zero-filled files in a pulled image mean the host disk was full (the sandbox log shows I/O errors on vdd). Check df before long test runs, and prune the lskit builder cache after builds.
 - A set can only list kits whose descriptor is the same on every platform. docker/sbx-kit-codex 0.155.1 lists extra packages on arm64 and breaks multi-platform set builds. Check both platforms before you change a pinned agent kit.
 - A project lstk config (.lstk/config.toml or LSKIT_LSTK_CONFIG) belongs to the user. Never rewrite it. The kit adds its defaults as LOCALSTACK_* variables, and only for keys the file does not set.
 - sbx network rules match names, not resolved addresses. A deny for localhost does not stop another name that resolves to 127.0.0.1. Say so in the docs when a rule is a partial control.
 - The first login shell of a new sandbox prints the template banner on stdout. Test helpers use bash -c, not bash -lc, when they read command output.
+- Read an lstk config as TOML, never with a text match. lstk loads it through viper, which also ignores the case of keys, so a text match misses literal strings, inline tables, and keys such as Image. lskit-check-config parses it with smol-toml.
