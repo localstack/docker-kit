@@ -161,9 +161,11 @@ Some rules apply:
   if the file does not set them.
 - The `localstack_image` kit argument applies only to the kit config.
 - A project config can start only LocalStack images, unless you set
-  `-e LSKIT_ALLOW_ANY_IMAGE=1`. To ignore `.lstk/config.toml`, for example in
-  a repository that you do not trust, set `-e LSKIT_IGNORE_PROJECT_CONFIG=1`.
-  See [Security](docs/security.md#project-lstk-config).
+  `-e LSKIT_ALLOW_ANY_IMAGE=1`. The kit reads the file as TOML for this
+  check, and it refuses a file that is not valid TOML. To ignore
+  `.lstk/config.toml`, for example in a repository that you do not trust,
+  set `-e LSKIT_IGNORE_PROJECT_CONFIG=1`. See
+  [Security](docs/security.md#project-lstk-config).
 - After a change to the file, run `lstk restart` in the sandbox.
 - The AWS endpoint, credentials, and tools of the kit are for the AWS
   emulator.
