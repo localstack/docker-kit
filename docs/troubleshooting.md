@@ -60,7 +60,7 @@ log then shows `I/O error, dev vdd`.
 2. Remove the damaged image in the sandbox and start again:
 
    ```console
-   $ sbx exec ls-claude bash -lc 'docker rm -f localstack-main; docker rmi localstack/localstack-pro:2026.8.4; lstk start'
+   $ sbx exec ls-claude bash -c 'docker rm -f $(docker ps -aq --filter name=localstack); docker rmi $(docker images -q "localstack/*"); lstk start'
    ```
 
 ## LocalStack has no resources after I come back
