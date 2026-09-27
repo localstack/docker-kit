@@ -12,9 +12,9 @@ version: "0.1.0"
 
 args:
   localstack_image:
-    default: localstack/localstack-pro:2026.8.4
+    default: localstack/localstack-pro:latest
     pattern: '^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9][A-Za-z0-9._-]*)?$'
-    description: LocalStack image that lstk starts. The cached license is tied to its major.minor version.
+    description: LocalStack image that lstk starts. The default is the latest release.
 
 kits:
   - ref: docker.io/docker/sbx-kit-claude:2.1.278

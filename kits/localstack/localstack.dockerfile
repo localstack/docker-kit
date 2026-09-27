@@ -15,8 +15,14 @@ WORKDIR /tmp/build
 FROM base AS lstk
 ARG TARGETARCH
 ARG LSTK_VERSION
-RUN mkdir -p "$KIT_HOME/lstk" \
- && curl -fsSL "https://github.com/localstack/lstk/releases/download/v${LSTK_VERSION}/lstk_${LSTK_VERSION}_linux_${TARGETARCH}.tar.gz" \
+# The asset name has the version in it, so "latest" first resolves to a
+# version through the redirect of the latest release page (no API token).
+RUN version="$LSTK_VERSION" \
+ && if [ "$version" = latest ]; then \
+      version="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/localstack/lstk/releases/latest | sed 's#.*/tag/v##')"; \
+    fi \
+ && mkdir -p "$KIT_HOME/lstk" \
+ && curl -fsSL "https://github.com/localstack/lstk/releases/download/v${version}/lstk_${version}_linux_${TARGETARCH}.tar.gz" \
     | tar -xz -C "$KIT_HOME/lstk" lstk bundled-extensions lstk-extensions.toml
 
 FROM base AS node
