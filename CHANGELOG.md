@@ -17,6 +17,8 @@ The first version.
   `LSKIT_LSTK_CONFIG`. The config selects the emulator, the image, and the
   LocalStack variables.
 - `lskit-status`, which shows the state of the start at boot.
+- `lskit-check-config`, which reads a project config as TOML and refuses it
+  when it starts an image outside `localstack/`.
 - Network rules for LocalStack, Docker Hub, Lambda images, and package
   registries. Deny rules keep loopback names off the sandbox proxy.
 - Test scripts (`make smoke`, `make project-config`, `make e2e`), CI, and a
