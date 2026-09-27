@@ -172,8 +172,9 @@ Some rules apply:
 
 ### Choose the LocalStack version
 
-The kit pins the LocalStack image. To use another image, set the
-`localstack_image` argument when you create the sandbox:
+The kit starts the latest LocalStack release
+(`localstack/localstack-pro:latest`). To pin a version or use another image,
+set the `localstack_image` argument when you create the sandbox:
 
 ```console
 $ sbx run --name ls-claude -e LOCALSTACK_AUTH_TOKEN \
