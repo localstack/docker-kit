@@ -16,7 +16,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check shell scripts
         run: scripts/lint.sh
       - name: Check workflows
@@ -26,7 +26,7 @@ jobs:
     name: Build kits
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The build pulls both agent kits for both platforms. A hosted runner
       # does not have enough free disk for that until these unused toolchains
       # are removed.
@@ -35,7 +35,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           docker system prune --all --force
           df -h /
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       # A kit set can list only published kits, so the mixin goes to a local
       # registry first. The build fails on the known ways to break a set,
       # such as a component with different descriptors per platform.
