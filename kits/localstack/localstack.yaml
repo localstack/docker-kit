@@ -7,6 +7,7 @@ description: >-
   LocalStack for AWS in the sandbox. lstk starts the emulator on boot. The kit
   also adds the LocalStack MCP server, Terraform, AWS CDK, AWS SAM CLI, and
   AWS CLI v2, all pointed at http://localhost:4566.
+sourceUrl: https://github.com/localstack/docker-kit
 licenses: [Apache-2.0]
 version: "0.1.0"
 

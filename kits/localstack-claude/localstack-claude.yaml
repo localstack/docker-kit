@@ -6,6 +6,7 @@ author: "LocalStack <info@localstack.cloud>"
 description: >-
   Docker's Claude Code workload with the LocalStack mixin. The LocalStack MCP
   server is registered with Claude Code.
+sourceUrl: https://github.com/localstack/docker-kit
 licenses: [Apache-2.0]
 version: "0.1.0"
 
