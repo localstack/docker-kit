@@ -6,8 +6,9 @@
 #      run also checks that sbx -p publishes LocalStack to the host.
 #   2. lstk/explicit.toml, named by -e LSKIT_LSTK_CONFIG. It must win over
 #      .lstk/config.toml. It binds loopback, so the start log must have a hint.
-#   3. A config that starts an image outside localstack/. The kit must refuse
-#      to start it.
+#   3. A config that starts an image outside localstack/, written as a TOML
+#      literal string. The kit must refuse to start it. In the same sandbox,
+#      lskit-check-config gets other forms of TOML, such as an inline table.
 #   4. The same config with -e LSKIT_IGNORE_PROJECT_CONFIG=1. The kit must use
 #      its own config.
 #
@@ -52,12 +53,16 @@ check_found_and_explicit_configs() {
 
 check_untrusted_config() {
   local workspace="$1"
-  write_project_config "$workspace/.lstk/config.toml" lskit-untrusted '":4566,:443"' "$FOREIGN_IMAGE"
+  mkdir -p "$workspace/.lstk"
+  printf "[[containers]]\ntype = \"aws\"\nimage = '%s'\nport = \"4566\"\n" "$FOREIGN_IMAGE" \
+    >"$workspace/.lstk/config.toml"
+  write_config_variants "$workspace/variants"
 
   create_sandbox "rejected" "$workspace"
   run_check "The kit refuses a project config with a foreign image" check_boot_state config-rejected
   run_check "No container runs the foreign image" in_sandbox \
     "! docker ps -a --format '{{.Image}}' | grep -qx $FOREIGN_IMAGE"
+  check_config_variants "$workspace/variants"
   remove_sandbox
 
   create_sandbox "ignored" "$workspace" -e LSKIT_IGNORE_PROJECT_CONFIG=1
@@ -69,13 +74,42 @@ check_untrusted_config() {
   remove_sandbox
 }
 
+# The file name starts with the expected result of lskit-check-config.
+write_config_variants() {
+  local dir="$1"
+  mkdir -p "$dir"
+  printf '[[containers]]\nimage = "%s"\n' "$FOREIGN_IMAGE" >"$dir/reject-basic-string.toml"
+  printf "[[containers]]\nimage = '%s'\n" "$FOREIGN_IMAGE" >"$dir/reject-literal-string.toml"
+  printf 'containers = [{ type = "aws", image = "%s" }]\n' "$FOREIGN_IMAGE" >"$dir/reject-inline-table.toml"
+  printf '[[CONTAINERS]]\nImage = "%s"\n' "$FOREIGN_IMAGE" >"$dir/reject-key-case.toml"
+  printf '[[containers]\n' >"$dir/reject-invalid-toml.toml"
+  printf '[[containers]]\nimage = "%s"\n' "$LOCALSTACK_IMAGE" >"$dir/accept-localstack-image.toml"
+  printf '[[containers]]\ntype = "snowflake"\n' >"$dir/accept-default-image.toml"
+}
+
+check_config_variants() {
+  local file name
+  for file in "$1"/*.toml; do
+    name="$(basename "$file" .toml)"
+    run_check "lskit-check-config: ${name%%-*} ${name#*-}" check_config_variant "$file" "${name%%-*}"
+  done
+}
+
+check_config_variant() {
+  if in_sandbox "lskit-check-config $(printf %q "$1") >/dev/null"; then
+    [[ "$2" == accept ]]
+  else
+    [[ "$2" == reject ]]
+  fi
+}
+
 write_project_config() {
-  local path="$1" container="$2" gateway="$3" image="${4:-$LOCALSTACK_IMAGE}"
+  local path="$1" container="$2" gateway="$3"
   mkdir -p "$(dirname "$path")"
   cat >"$path" <<EOF
 [[containers]]
 type = "aws"
-image = "$image"
+image = "$LOCALSTACK_IMAGE"
 port = "4566"
 container_name = "$container"
 env = ["project"]
