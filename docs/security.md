@@ -61,11 +61,16 @@ The kit limits this:
   Docker Hub, or `public.ecr.aws/localstack/...`. With another image, the
   start stops, and `lskit-status` shows `config-rejected`. To allow it,
   create the sandbox with `-e LSKIT_ALLOW_ANY_IMAGE=1`.
+- The kit reads the file as TOML, and ignores the case of keys as lstk
+  does, so each way to write an image counts. It refuses a file that is not
+  valid TOML.
 - To ignore `.lstk/config.toml`, create the sandbox with
   `-e LSKIT_IGNORE_PROJECT_CONFIG=1`. The kit then uses its own config.
 
-Treat a project config like a script in the repository. For a repository
-that you do not trust, set `LSKIT_IGNORE_PROJECT_CONFIG=1`.
+The image check does not make an untrusted config safe, because the env
+profiles still control LocalStack. Treat a project config like a script in
+the repository. For a repository that you do not trust, set
+`LSKIT_IGNORE_PROJECT_CONFIG=1`.
 
 ## AWS accounts
 
