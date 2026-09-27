@@ -24,20 +24,27 @@ scripts/
 
 ## Versions
 
-The mixin pins each tool with an argument in `kits/localstack/localstack.yaml`.
-To change a version, change the default of its argument. The sets pin
-Docker's agent kits by tag in their `kits:` lists.
+Each tool has an argument in `kits/localstack/localstack.yaml`. LocalStack,
+lstk, and the LocalStack MCP server follow their latest releases. The other
+tools are pinned. To change a tool, change the default of its argument. The
+sets pin Docker's agent kits by tag in their `kits:` lists.
 
-| Argument | Tool |
-| --- | --- |
-| `lstk_version` | lstk |
-| `mcp_server_version` | `@localstack/localstack-mcp-server` |
-| `node_version` | Node.js, for the MCP server and AWS CDK |
-| `terraform_version` | Terraform |
-| `cdk_version` | AWS CDK CLI |
-| `aws_cli_version` | AWS CLI v2 |
-| `sam_version` | AWS SAM CLI |
-| `localstack_image` | LocalStack image (set when the sandbox is created) |
+| Argument | Tool | Default |
+| --- | --- | --- |
+| `localstack_image` | LocalStack image (set when the sandbox is created) | `localstack/localstack-pro:latest` |
+| `lstk_version` | lstk | `latest` |
+| `mcp_server_version` | `@localstack/localstack-mcp-server` | `latest` |
+| `node_version` | Node.js, for the MCP server and AWS CDK | pinned |
+| `terraform_version` | Terraform | pinned |
+| `cdk_version` | AWS CDK CLI | pinned |
+| `aws_cli_version` | AWS CLI v2 | pinned |
+| `sam_version` | AWS SAM CLI | pinned |
+| `toml_parser_version` | smol-toml, for `lskit-check-config` | pinned |
+
+For `latest`, `scripts/build.sh` finds the current lstk and MCP server
+releases and passes their numbers to the build. BuildKit caches a step by
+its text, so without the numbers, a new release would not rebuild the step.
+A sandbox pulls the LocalStack image when it starts.
 
 ## Build and test locally
 
