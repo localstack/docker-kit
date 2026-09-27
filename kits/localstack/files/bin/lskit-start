@@ -18,8 +18,6 @@ readonly DOCKER_WAIT_SECONDS=180
 # The kit config sets these for the sandbox. A project config may leave them
 # out, so they go to LocalStack as LOCALSTACK_* variables instead.
 readonly KIT_DEFAULTS=(LAMBDA_IGNORE_ARCHITECTURE=1 SKIP_SSL_CERT_DOWNLOAD=1)
-# Images that a project config can start without LSKIT_ALLOW_ANY_IMAGE.
-readonly LOCALSTACK_IMAGE_PATTERN='^(docker\.io/)?localstack/|^public\.ecr\.aws/localstack/'
 
 # The hook PATH comes from the workload, and some workloads leave out the kit
 # directory.
@@ -68,21 +66,18 @@ active_config() {
 # auth token and the Docker socket. So a project config can start only
 # LocalStack images, unless the user sets LSKIT_ALLOW_ANY_IMAGE.
 config_is_usable() {
-  local config="$1" images
+  local config="$1" reason
   if [[ ! -f "$config" ]]; then
     record_status config-missing "LSKIT_LSTK_CONFIG names $config, and the file does not exist."
     return 1
   fi
-  images="$(foreign_images "$config")"
-  if [[ "$config" != "$KIT_CONFIG" && -z "${LSKIT_ALLOW_ANY_IMAGE:-}" && -n "$images" ]]; then
-    record_status config-rejected "$config starts $images, which is not a LocalStack image. To allow it, create the sandbox with -e LSKIT_ALLOW_ANY_IMAGE=1."
+  if [[ "$config" == "$KIT_CONFIG" || -n "${LSKIT_ALLOW_ANY_IMAGE:-}" ]]; then
+    return 0
+  fi
+  if ! reason="$(lskit-check-config "$config")"; then
+    record_status config-rejected "$reason To allow another image, create the sandbox with -e LSKIT_ALLOW_ANY_IMAGE=1."
     return 1
   fi
-}
-
-foreign_images() {
-  sed -n -E 's/^[[:space:]]*image[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$1" \
-    | grep -v -E "$LOCALSTACK_IMAGE_PATTERN" | paste -s -d , - || true
 }
 
 run_lstk_start() {
