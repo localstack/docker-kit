@@ -30,7 +30,7 @@ main() {
   work_root="$(mktemp -d)"
   trap 'rm -rf "$work_root"' EXIT
   ensure_builder
-  build_kit "$REPO_ROOT/kits/localstack" sbx-kit-localstack
+  build_mixin
   build_set localstack-claude sbx-localstack-claude
   build_set localstack-codex sbx-localstack-codex
 }
@@ -60,14 +60,45 @@ ensure_builder() {
     --buildkitd-config "$REPO_ROOT/scripts/buildkitd.toml" --bootstrap
 }
 
+build_mixin() {
+  local release_args=() arg
+  while IFS= read -r arg; do
+    release_args+=("$arg")
+  done < <(latest_release_args "$REPO_ROOT/kits/localstack/localstack.yaml")
+  build_kit "$REPO_ROOT/kits/localstack" sbx-kit-localstack ${release_args[@]+"${release_args[@]}"}
+}
+
+# Arguments after the image name go to docker buildx build.
 build_kit() {
   local kit_dir="$1" image="$2" descriptor ref
+  shift 2
   descriptor="$kit_dir/$(basename "$kit_dir").yaml"
   ref="$registry/$NAMESPACE/$image:$(descriptor_version "$descriptor")"
   refuse_published_tag "$ref"
   echo "==> $ref"
-  docker buildx build --builder "$BUILDER" --platform "$platform" \
+  docker buildx build --builder "$BUILDER" --platform "$platform" "$@" \
     --file "$descriptor" --tag "$ref" --push "$kit_dir"
+}
+
+# BuildKit caches a step by its text, and "latest" stays the same text when a
+# new release comes out. So for each tool whose default is latest, the build
+# passes the number of the current release, and a new release rebuilds it.
+latest_release_args() {
+  local descriptor="$1" lstk mcp_server
+  if [[ "$(arg_default "$descriptor" lstk_version)" == latest ]]; then
+    lstk="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/localstack/lstk/releases/latest | sed 's#.*/tag/v##')"
+    echo "==> lstk $lstk" >&2
+    printf '%s\n' --build-arg "lstk_version=$lstk"
+  fi
+  if [[ "$(arg_default "$descriptor" mcp_server_version)" == latest ]]; then
+    mcp_server="$(npm view @localstack/localstack-mcp-server version)"
+    echo "==> LocalStack MCP server $mcp_server" >&2
+    printf '%s\n' --build-arg "mcp_server_version=$mcp_server"
+  fi
+}
+
+arg_default() {
+  sed -n "/^  $2:/,/^    default:/s/^    default: \"\{0,1\}\([^\"]*\)\"\{0,1\}$/\1/p" "$1" | head -n 1
 }
 
 build_set() {
