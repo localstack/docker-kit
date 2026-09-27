@@ -29,6 +29,10 @@ readonly PROXY_DENIED_URLS=(
 main() {
   parse_sandbox_args "$@"
   require_auth_token
+  # LOCALSTACK_DEBUG reaches the boot start only because sbx 0.45 gives
+  # startup hooks the whole environment. The kit spec lets a runtime pass only
+  # the variables that the kit names, so the passthrough check fails by design
+  # on an sbx that enforces it.
   create_sandbox "smoke" "$(new_workspace smoke)" \
     -e LOCALSTACK_DEBUG=1 --kit-arg "localstack_image=$KIT_ARG_IMAGE"
   check_localstack
