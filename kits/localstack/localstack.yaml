@@ -43,6 +43,11 @@ args:
     default: "1.166.2"
     pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
     buildArg: SAM_VERSION
+  toml_parser_version:
+    default: "1.9.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: smol-toml release that checks the images in a project lstk config
+    buildArg: SMOL_TOML_VERSION
 
 # The tools live under /opt/localstack-kit and do not replace another kit's
 # copy. Names in the kit's own namespace let the mixin compose with kits that

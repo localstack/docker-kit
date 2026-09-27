@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Checks that an lstk config starts only LocalStack images. When it does not,
+# or when the file is not valid TOML, prints the reason and exits 1.
+#
+# A project config comes from the workspace, and lstk runs its image with the
+# auth token and the Docker socket. The check parses the file as TOML, because
+# a text match misses literal strings, inline tables, and keys in other case.
+#
+# Usage: lskit-check-config CONFIG
+set -euo pipefail
+
+readonly KIT_HOME=/opt/localstack-kit
+readonly IMAGE_LISTER="$KIT_HOME/lib/config-check/config-images.mjs"
+# localstack/ on Docker Hub, with or without the registry name, and the
+# LocalStack mirror on Amazon ECR Public.
+readonly LOCALSTACK_IMAGE_PATTERN='^(docker\.io/)?localstack/|^public\.ecr\.aws/localstack/'
+
+main() {
+  local config="${1:?usage: lskit-check-config CONFIG}" images foreign
+  if ! images="$("$KIT_HOME/node/bin/node" "$IMAGE_LISTER" "$config")"; then
+    echo "$images"
+    return 1
+  fi
+  foreign="$(printf '%s\n' "$images" | grep -v -E -e "$LOCALSTACK_IMAGE_PATTERN" -e '^$' | paste -s -d , - || true)"
+  if [[ -n "$foreign" ]]; then
+    echo "$config starts $foreign, which is not a LocalStack image."
+    return 1
+  fi
+}
+
+main "$@"

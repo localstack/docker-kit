@@ -24,12 +24,15 @@ ARG TARGETARCH
 ARG NODE_VERSION
 ARG MCP_SERVER_VERSION
 ARG CDK_VERSION
+ARG SMOL_TOML_VERSION
 RUN case "$TARGETARCH" in amd64) arch=x64 ;; arm64) arch=arm64 ;; *) exit 1 ;; esac \
  && mkdir -p "$KIT_HOME/node" \
  && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${arch}.tar.xz" \
     | tar -xJ --strip-components=1 -C "$KIT_HOME/node" \
  && PATH="$KIT_HOME/node/bin:$PATH" npm install --global --no-fund --no-audit \
-    "@localstack/localstack-mcp-server@${MCP_SERVER_VERSION}" "aws-cdk@${CDK_VERSION}"
+    "@localstack/localstack-mcp-server@${MCP_SERVER_VERSION}" "aws-cdk@${CDK_VERSION}" \
+ && PATH="$KIT_HOME/node/bin:$PATH" npm install --prefix "$KIT_HOME/lib/config-check" \
+    --no-save --no-package-lock --no-fund --no-audit "smol-toml@${SMOL_TOML_VERSION}"
 
 FROM base AS terraform
 ARG TARGETARCH
@@ -62,6 +65,7 @@ COPY --from=awscli /opt/localstack-kit/ /opt/localstack-kit/
 COPY --from=sam /opt/localstack-kit/ /opt/localstack-kit/
 COPY files/bin/ /opt/localstack-kit/bin/
 COPY files/etc/ /opt/localstack-kit/etc/
+COPY files/lib/ /opt/localstack-kit/lib/config-check/
 COPY files/usr-local-bin/dockerd /usr/local/bin/dockerd
 ENV PATH=/opt/localstack-kit/bin:/opt/localstack-kit/node/bin \
     AWS_ENDPOINT_URL=http://localhost:4566 \
