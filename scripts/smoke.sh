@@ -15,8 +15,8 @@ readonly REPO_ROOT
 # shellcheck source=scripts/lib/sandbox.sh
 source "$REPO_ROOT/scripts/lib/sandbox.sh"
 
-# The same digest as the default tag, so the pull costs nothing extra, but a
-# different name, so the check can see that the argument applied.
+# A tag with a different name from the default (latest), so the check can see
+# that the argument applied.
 readonly KIT_ARG_IMAGE=localstack/localstack-pro:2026.8
 readonly PROXY_DENIED_URLS=(
   http://localhost.localstack.cloud:4566/_localstack/health

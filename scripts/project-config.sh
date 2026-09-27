@@ -23,7 +23,7 @@ readonly REPO_ROOT
 source "$REPO_ROOT/scripts/lib/sandbox.sh"
 
 readonly HOST_PORT=$((45000 + RANDOM % 1000))
-readonly LOCALSTACK_IMAGE=localstack/localstack-pro:2026.8.4
+readonly LOCALSTACK_IMAGE=localstack/localstack-pro:latest
 readonly FOREIGN_IMAGE=busybox:latest
 
 main() {
