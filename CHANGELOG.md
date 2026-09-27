@@ -11,6 +11,8 @@ The first version.
 - The LocalStack mixin, `sbx-kit-localstack`. It starts LocalStack with lstk
   when the sandbox boots, and adds the LocalStack MCP server, Terraform,
   AWS CDK, AWS SAM CLI, and AWS CLI v2 under `/opt/localstack-kit`.
+  LocalStack, lstk, and the MCP server follow their latest releases. The
+  other tools are pinned.
 - The Claude Code set, `sbx-localstack-claude`, and the Codex set,
   `sbx-localstack-codex`. Each set registers the MCP server with its agent.
 - Support for the project config of lstk (`.lstk/config.toml`) and for
