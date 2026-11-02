@@ -2,11 +2,16 @@
 # Builds the LocalStack mixin and the per-agent kit sets, and pushes them.
 #
 # Usage: scripts/build.sh [--registry HOST] [--platform LIST] [--allow-overwrite]
+#                         [--latest]
 #
 # The default registry is docker.io. For local tests, use
 # --registry localhost:5055 --platform linux/arm64 (or linux/amd64).
 # On docker.io, the build stops if a tag exists, unless --allow-overwrite is
 # given. Published tags must not change under the people who use them.
+#
+# --latest pushes each kit with the tag latest, not with its version, and
+# the sets list the latest mixin. The latest tag moves, so the build does not
+# stop if it exists. CI does this on each push to main.
 #
 # Kits must be built with a docker-container builder. The docker driver with
 # the classic image store pushes Docker v2 manifests, which drop the OCI
@@ -22,6 +27,7 @@ readonly CANONICAL_REGISTRY=docker.io
 registry="$CANONICAL_REGISTRY"
 platform=linux/amd64,linux/arm64
 allow_overwrite=false
+push_latest=false
 work_root=""
 
 main() {
@@ -41,6 +47,7 @@ parse_args() {
       --registry) registry="$2"; shift 2 ;;
       --platform) platform="$2"; shift 2 ;;
       --allow-overwrite) allow_overwrite=true; shift ;;
+      --latest) push_latest=true; shift ;;
       -h | --help) usage; exit 0 ;;
       *) usage >&2; exit 2 ;;
     esac
@@ -48,7 +55,7 @@ parse_args() {
 }
 
 usage() {
-  sed -n '2,9s/^# \{0,1\}//p' "$0"
+  sed -n '2,14s/^# \{0,1\}//p' "$0"
 }
 
 ensure_builder() {
@@ -73,11 +80,19 @@ build_kit() {
   local kit_dir="$1" image="$2" descriptor ref
   shift 2
   descriptor="$kit_dir/$(basename "$kit_dir").yaml"
-  ref="$registry/$NAMESPACE/$image:$(descriptor_version "$descriptor")"
+  ref="$registry/$NAMESPACE/$image:$(kit_tag "$descriptor")"
   refuse_published_tag "$ref"
   echo "==> $ref"
   docker buildx build --builder "$BUILDER" --platform "$platform" "$@" \
     --file "$descriptor" --tag "$ref" --push "$kit_dir"
+}
+
+kit_tag() {
+  if [[ "$push_latest" == true ]]; then
+    echo latest
+  else
+    descriptor_version "$1"
+  fi
 }
 
 # BuildKit caches a step by its text, and "latest" stays the same text when a
@@ -102,25 +117,38 @@ arg_default() {
 }
 
 build_set() {
-  local name="$1" image="$2"
+  local name="$1" image="$2" descriptor
   cp -R "$REPO_ROOT/kits/$name" "$work_root/$name"
-  point_components_at_registry "$work_root/$name/$name.yaml"
+  descriptor="$work_root/$name/$name.yaml"
+  point_components_at_registry "$descriptor"
+  point_mixin_at_latest "$descriptor"
   build_kit "$work_root/$name" "$image"
 }
 
 # Sets can only list published kits. For a local registry, the LocalStack
 # component refs move to that registry. Docker's agent kits stay on docker.io.
 point_components_at_registry() {
-  local descriptor="$1"
   if [[ "$registry" == "$CANONICAL_REGISTRY" ]]; then
     return 0
   fi
-  sed -i.orig "s#ref: $CANONICAL_REGISTRY/$NAMESPACE/#ref: $registry/$NAMESPACE/#" "$descriptor"
-  rm -f "$descriptor.orig"
+  edit_in_place "$1" "s#ref: $CANONICAL_REGISTRY/$NAMESPACE/#ref: $registry/$NAMESPACE/#"
+}
+
+point_mixin_at_latest() {
+  if [[ "$push_latest" != true ]]; then
+    return 0
+  fi
+  edit_in_place "$1" "s#\(/$NAMESPACE/sbx-kit-localstack:\).*#\1latest#"
+}
+
+edit_in_place() {
+  sed -i.orig "$2" "$1"
+  rm -f "$1.orig"
 }
 
 refuse_published_tag() {
-  if [[ "$registry" != "$CANONICAL_REGISTRY" || "$allow_overwrite" == true ]]; then
+  if [[ "$registry" != "$CANONICAL_REGISTRY" || "$allow_overwrite" == true \
+    || "$push_latest" == true ]]; then
     return 0
   fi
   if docker buildx imagetools inspect "$1" >/dev/null 2>&1; then
