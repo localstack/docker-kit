@@ -7,7 +7,7 @@ AGENT ?= claude
 TAG ?=
 TAG_OPTION = $(if $(TAG),--tag $(TAG))
 
-.PHONY: lint registry build-local release bump sbx-allow-local smoke e2e project-config
+.PHONY: lint registry build-local sbx-allow-local smoke e2e project-config
 
 # Runs shellcheck on every shell script.
 lint:
@@ -20,13 +20,6 @@ registry:
 
 build-local: registry
 	scripts/build.sh --registry $(LOCAL_REGISTRY) --platform $(LOCAL_PLATFORM)
-
-release:
-	scripts/build.sh
-
-# Sets one version on all kits, for example: make bump VERSION=0.2.0
-bump:
-	scripts/bump-version.sh $(VERSION)
 
 # Lets sbx load kits from the local registry. The default allows docker.io
 # only. Other allowed sources stay in the list.

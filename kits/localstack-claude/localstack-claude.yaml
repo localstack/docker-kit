@@ -8,7 +8,8 @@ description: >-
   server is registered with Claude Code.
 sourceUrl: https://github.com/localstack/docker-kit
 licenses: [Apache-2.0]
-version: "0.1.0"
+# The release workflow sets the version from the git tag.
+version: "0.0.0"
 
 args:
   localstack_image:
@@ -18,7 +19,7 @@ args:
 
 kits:
   - ref: docker.io/docker/sbx-kit-claude:2.1.278
-  - ref: docker.io/localstack/sbx-kit-localstack:0.1.0
+  - ref: docker.io/localstack/sbx-kit-localstack:0.0.0
     args:
       localstack_image: ${{ kit.args.localstack_image }}
 
