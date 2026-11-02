@@ -107,6 +107,17 @@ request:
 - A build of the mixin and the sets for `linux/amd64` and `linux/arm64`
   through a local registry, as in `make build-local`.
 
+On a push to `main`, when these jobs pass, the `publish` job pushes the kits
+to `docker.io/localstack` with the tag `latest` (`scripts/build.sh --latest`).
+In this build, the sets list the mixin with the tag `latest`. The job uses the
+`docker-push` environment, which holds the `DOCKERHUB_USERNAME` and
+`DOCKER_PUSH_TOKEN` secrets and accepts only `main` and `v*` tags. The token
+can push to many repositories in the `localstack` namespace.
+
+Rulesets protect `main` and the `v*` tags. A change to `main` needs a pull
+request with one approval. Only repository admins can create, move, or delete
+a `v*` tag. Admins can bypass these rules.
+
 The sandbox tests need KVM or Apple silicon, so run `make smoke`,
 `make project-config`, and `make e2e` on your machine before a release.
 
