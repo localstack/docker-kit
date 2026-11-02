@@ -177,11 +177,14 @@ print_changes() {
 }
 
 print_group() {
+  local line
   if [[ -z "$2" ]]; then
     return 0
   fi
   printf '### %s\n\n' "$1"
-  sed 's/^/- /' <<<"$2"
+  while IFS= read -r line; do
+    echo "- $line"
+  done <<<"$2"
   echo
 }
 
