@@ -16,6 +16,8 @@ kits/
   localstack-codex/      set: Docker's Codex kit and the mixin
 scripts/
   build.sh               build and push the mixin and the sets
+  release.sh             plan a release, and write its notes
+  tool-releases.sh       current releases of lstk and the MCP server
   local-registry.sh      HTTPS registry for local tests
   smoke.sh               checks without an agent prompt
   project-config.sh      checks for a project lstk config and LSKIT_LSTK_CONFIG
@@ -118,57 +120,65 @@ On a push to `main`, when these jobs pass, the `publish` job pushes the kits
 to `docker.io/localstack` with the tag `latest` (`scripts/build.sh --latest`).
 In this build, the sets list the mixin with the tag `latest`. The job uses the
 `docker-push` environment, which holds the `DOCKERHUB_USERNAME` and
-`DOCKER_PUSH_TOKEN` secrets and accepts only `main` and `v*` tags. The token
-can push to many repositories in the `localstack` namespace.
+`DOCKER_PUSH_TOKEN` secrets and accepts only `main`. The token can push to
+many repositories in the `localstack` namespace.
 
 Rulesets protect `main` and the `v*` tags. A change to `main` needs a pull
-request with one approval. Only repository admins can create, move, or delete
-a `v*` tag. Admins can bypass these rules.
+request with one approval. Only repository admins and deploy keys can create,
+move, or delete a `v*` tag. Admins can bypass these rules.
 
-The sandbox tests need KVM or Apple silicon, so run `make smoke`,
-`make project-config`, and `make e2e` on your machine before a release.
+The sandbox tests need KVM or Apple silicon, so they do not run in CI. Run
+them on your machine.
 
 ## Release
 
-1. Set the new version on all kits, and add an entry to `CHANGELOG.md`:
+Anyone with write access can release. Open the **Actions** tab, select
+**Release**, and select **Run workflow** on `main`. Keep the bump at `auto`,
+or choose `patch`, `minor`, or `major`.
 
-   ```console
-   $ make bump VERSION=0.2.0
-   ```
+`.github/workflows/release.yaml` does these steps:
 
-2. Run the sandbox tests against a local build (see above).
-3. Commit, then push a tag that matches the version:
+1. `scripts/release.sh plan` finds the last `vX.Y.Z` tag and the next
+   version. With `auto`, the commit types since the last release give the
+   bump: a breaking change (`feat!:` or a `BREAKING CHANGE:` footer) gives
+   major, `feat` gives minor, and other types give patch. Before 1.0.0, a
+   breaking change gives minor. The first release is 0.1.0.
+2. `auto` stops when `main` has no new commits, and lstk and the LocalStack
+   MCP server have no new release. The notes of each release record the lstk
+   and MCP server versions, so the plan can compare them.
+3. CI runs: lint, and a build for both platforms.
+4. `scripts/build.sh --version X.Y.Z` builds the kits with the lstk and MCP
+   server versions of the plan, writes the version into each descriptor, and
+   pushes the kits to `docker.io/localstack`. In git, the descriptors have the
+   version 0.0.0.
+5. The kits are signed with the GitHub OIDC token (keyless). If signing
+   fails, the release continues. Run the `Sign kits` job again.
+6. The workflow pushes the tag `vX.Y.Z` and creates the GitHub release. The
+   notes list the images, the lstk and MCP server versions, and the commits
+   since the last release, grouped by type.
 
-   ```console
-   $ git tag v0.2.0
-   $ git push origin v0.2.0
-   ```
+The tag comes last, so a failed run leaves no tag. Run the failed jobs again.
+The build replaces Docker Hub tags of a version that has no git tag.
 
-   `.github/workflows/release.yaml` builds both platforms, pushes the kits
-   to `docker.io/localstack`, and signs them with the GitHub OIDC token
-   (keyless). It needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
-   secrets in the `release` environment. This workflow has not run yet.
+The tag ruleset does not let `GITHUB_TOKEN` create `v*` tags, and a repository
+ruleset cannot list the GitHub Actions app as a bypass. So the workflow pushes
+the tag over SSH with a deploy key. The `release` environment holds the
+private key as `RELEASE_TAG_DEPLOY_KEY` and accepts only `main`. To replace
+the key, add a new deploy key with write access, store its private key in
+that secret, and remove the old deploy key.
 
-`scripts/build.sh` stops if the versions of the kits do not match, and if a
-tag already exists on Docker Hub. Published tags must not change.
-
-To release by hand, you need push access to the `localstack` namespace:
+The sandbox tests do not run in the workflow. Before you release, run them on
+the `latest` kits, which have the same code as `main`:
 
 ```console
-$ docker login
-$ make release
-$ sbx kit sign docker.io/localstack/sbx-kit-localstack:0.2.0
+$ make smoke AGENT=claude REGISTRY=docker.io TAG=latest
+$ make smoke AGENT=codex REGISTRY=docker.io TAG=latest
 ```
 
-Without `--key`, `sbx kit sign` signs keyless and opens a browser login.
-With `--key key.pem`, it signs with an unencrypted PEM key.
-
-Users verify a keyless signature from the release workflow like this:
+Users verify the signature of a release like this:
 
 ```console
 $ sbx kit verify docker.io/localstack/sbx-localstack-claude:0.2.0 \
-    --certificate-identity 'https://github.com/localstack/docker-kit/.github/workflows/release.yaml@refs/tags/v0.2.0' \
+    --certificate-identity 'https://github.com/localstack/docker-kit/.github/workflows/release.yaml@refs/heads/main' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
-
-For a key-based signature, they pass `--key cosign.pub` instead.
