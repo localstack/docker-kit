@@ -8,6 +8,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow runs lint and build first. The publish job does not
+  # run there, because the event is not a push.
+  workflow_call:
 
 permissions:
   contents: read
@@ -46,7 +49,7 @@ jobs:
         run: scripts/build.sh --registry localhost:5055 --platform linux/amd64,linux/arm64
 
   # The docker-push environment holds the Docker Hub token. It accepts only
-  # main and v* tags. The token can push to many localstack repositories.
+  # main. The token can push to many localstack repositories.
   publish:
     name: Publish latest kits
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

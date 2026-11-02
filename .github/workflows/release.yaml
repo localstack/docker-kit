@@ -1,13 +1,22 @@
-# Publishes the kits to docker.io/localstack and signs them. Push a tag that
-# matches the kit version, for example v0.2.0 for version "0.2.0".
+# Releases the kits. Anyone with write access starts it on main from the
+# Actions tab. scripts/release.sh plan finds the next version from the commit
+# types since the last release, and also releases when lstk or the MCP server
+# has a new release. Then CI runs, the kits are pushed with the version and
+# signed, and the last job creates the tag and the GitHub release.
 #
-# Needs the DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets in the release
-# environment, with push access to the localstack namespace.
+# The tag comes last, so a failed run leaves no tag. The tag ruleset lets only
+# admins and deploy keys create v* tags, so the workflow pushes the tag with
+# the deploy key in the release environment, which accepts only main.
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump. auto reads the commit types, and skips the release when nothing changed.
+        type: choice
+        default: auto
+        options: [auto, patch, minor, major]
 
 permissions:
   contents: read
@@ -17,26 +26,48 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Publish and sign kits
+  plan:
+    name: Plan the release
+    if: github.repository == 'localstack/docker-kit' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    environment: release
-    permissions:
-      contents: read
-      id-token: write # keyless signing with the GitHub OIDC token
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      version: ${{ steps.plan.outputs.version }}
+      lstk_version: ${{ steps.plan.outputs.lstk_version }}
+      mcp_server_version: ${{ steps.plan.outputs.mcp_server_version }}
     steps:
       - uses: actions/checkout@v7
-      - name: Check that the tag matches the kit version
-        run: |
-          version="$(sed -n 's/^version: "\(.*\)"$/\1/p' kits/localstack/localstack.yaml)"
-          if [[ "v$version" != "$GITHUB_REF_NAME" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match kit version $version." >&2
-            exit 1
-          fi
-          echo "KIT_VERSION=$version" >>"$GITHUB_ENV"
-      # The build pulls both agent kits for both platforms. A hosted runner
-      # does not have enough free disk for that until these unused toolchains
-      # are removed.
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Find the next version
+        id: plan
+        env:
+          BUMP: ${{ inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/release.sh plan "$BUMP" | tee -a "$GITHUB_OUTPUT"
+
+  ci:
+    name: CI
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    uses: ./.github/workflows/ci.yaml
+
+  publish:
+    name: Publish kits
+    needs: [plan, ci]
+    runs-on: ubuntu-24.04
+    environment:
+      name: docker-push
+      deployment: false
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      LSTK_VERSION: ${{ needs.plan.outputs.lstk_version }}
+      MCP_SERVER_VERSION: ${{ needs.plan.outputs.mcp_server_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
@@ -46,10 +77,32 @@ jobs:
       - uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # build.sh stops if a tag already exists on Docker Hub.
+          password: ${{ secrets.DOCKER_PUSH_TOKEN }}
+      # The version has no git tag yet, so a Docker Hub tag with this version
+      # is from a failed run. The build can replace it.
       - name: Build and push the kits
-        run: scripts/build.sh
+        run: >-
+          scripts/build.sh --version "$VERSION" --allow-overwrite
+          --lstk-version "$LSTK_VERSION" --mcp-server-version "$MCP_SERVER_VERSION"
+
+  # A signing failure does not stop the release. Run this job again to sign.
+  sign:
+    name: Sign kits
+    needs: [plan, publish]
+    runs-on: ubuntu-24.04
+    environment:
+      name: docker-push
+      deployment: false
+    permissions:
+      contents: read
+      id-token: write # keyless signing with the GitHub OIDC token
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PUSH_TOKEN }}
       - name: Install sbx
         run: |
           curl -fsSL https://get.docker.com | sudo REPO_ONLY=1 sh
@@ -57,5 +110,50 @@ jobs:
       - name: Sign the kits
         run: |
           for image in sbx-kit-localstack sbx-localstack-claude sbx-localstack-codex; do
-            sbx kit sign "docker.io/localstack/$image:$KIT_VERSION"
+            sbx kit sign "docker.io/localstack/$image:$VERSION"
           done
+
+  release:
+    name: Create the tag and the release
+    needs: [plan, publish]
+    runs-on: ubuntu-24.04
+    environment:
+      name: release
+      deployment: false
+    permissions:
+      contents: write
+    env:
+      TAG: v${{ needs.plan.outputs.version }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      LSTK_VERSION: ${{ needs.plan.outputs.lstk_version }}
+      MCP_SERVER_VERSION: ${{ needs.plan.outputs.mcp_server_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Write the release notes
+        run: scripts/release.sh notes "$VERSION" "$LSTK_VERSION" "$MCP_SERVER_VERSION" >"$RUNNER_TEMP/notes.md"
+      # GitHub publishes its SSH host keys in the meta API, so the push does
+      # not trust the first key that it sees.
+      - name: Push the tag
+        env:
+          DEPLOY_KEY: ${{ secrets.RELEASE_TAG_DEPLOY_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG exists. An earlier run pushed it."
+            exit 0
+          fi
+          install -m 600 /dev/null "$RUNNER_TEMP/deploy-key"
+          printf '%s\n' "$DEPLOY_KEY" >"$RUNNER_TEMP/deploy-key"
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' >"$RUNNER_TEMP/known_hosts"
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            tag -a "$TAG" -m "Release $TAG" "$GITHUB_SHA"
+          GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/deploy-key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts" \
+            git push "git@github.com:$GITHUB_REPOSITORY.git" "refs/tags/$TAG"
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
