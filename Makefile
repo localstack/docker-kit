@@ -2,6 +2,10 @@ LOCAL_REGISTRY ?= localhost:5055
 LOCAL_PLATFORM ?= linux/$(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 REGISTRY ?= $(LOCAL_REGISTRY)
 AGENT ?= claude
+# The set tag for the sandbox tests, for example TAG=latest. The default is
+# the version of the set.
+TAG ?=
+TAG_OPTION = $(if $(TAG),--tag $(TAG))
 
 .PHONY: lint registry build-local release bump sbx-allow-local smoke e2e project-config
 
@@ -31,12 +35,12 @@ sbx-allow-local:
 
 # Checks a set without an agent prompt. Uses no model credits.
 smoke:
-	scripts/smoke.sh $(AGENT) --registry $(REGISTRY)
+	scripts/smoke.sh $(AGENT) --registry $(REGISTRY) $(TAG_OPTION)
 
 # Gives the agent a Terraform task and checks the result. Uses model credits.
 e2e:
-	scripts/headless.sh $(AGENT) --registry $(REGISTRY)
+	scripts/headless.sh $(AGENT) --registry $(REGISTRY) $(TAG_OPTION)
 
 # Checks that the kit starts LocalStack with a project lstk config.
 project-config:
-	scripts/project-config.sh $(AGENT) --registry $(REGISTRY)
+	scripts/project-config.sh $(AGENT) --registry $(REGISTRY) $(TAG_OPTION)

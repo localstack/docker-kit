@@ -7,6 +7,7 @@ readonly LOCALSTACK_WAIT_SECONDS=420
 
 agent=""
 registry=docker.io
+kit_tag=""
 keep_sandbox=false
 sandbox_name=""
 keepalive_pid=""
@@ -17,10 +18,11 @@ parse_sandbox_args() {
   case "$agent" in
     claude | codex) shift ;;
     *)
-      echo "usage: $(basename "$0") claude|codex [--registry HOST] [--keep]" >&2
+      echo "usage: $(basename "$0") claude|codex [--registry HOST] [--tag TAG] [--keep]" >&2
       exit 2
       ;;
   esac
+  kit_tag="$(set_descriptor_version)"
   parse_sandbox_options "$@"
 }
 
@@ -28,6 +30,7 @@ parse_sandbox_options() {
   while (($# > 0)); do
     case "$1" in
       --registry) registry="$2"; shift 2 ;;
+      --tag) kit_tag="$2"; shift 2 ;;
       --keep) keep_sandbox=true; shift ;;
       *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
@@ -71,9 +74,14 @@ new_workspace() {
   echo "$dir"
 }
 
+# The default tag is the version of the set. Use --tag latest for the kits
+# that CI publishes from main.
 kit_set_ref() {
-  local descriptor="$REPO_ROOT/kits/localstack-$agent/localstack-$agent.yaml"
-  echo "$registry/$KIT_NAMESPACE/sbx-localstack-$agent:$(sed -n 's/^version: "\(.*\)"$/\1/p' "$descriptor")"
+  echo "$registry/$KIT_NAMESPACE/sbx-localstack-$agent:$kit_tag"
+}
+
+set_descriptor_version() {
+  sed -n 's/^version: "\(.*\)"$/\1/p' "$REPO_ROOT/kits/localstack-$agent/localstack-$agent.yaml"
 }
 
 # Creates the sandbox without attaching to it. A bare -e name copies the

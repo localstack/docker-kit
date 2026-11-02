@@ -14,7 +14,7 @@
 #
 # The run uses no model credits.
 #
-# Usage: scripts/project-config.sh claude|codex [--registry HOST] [--keep]
+# Usage: scripts/project-config.sh claude|codex [--registry HOST] [--tag TAG] [--keep]
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

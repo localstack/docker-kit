@@ -3,7 +3,7 @@
 # outside the agent. The task deploys an S3 bucket and a Lambda function to
 # LocalStack with Terraform. Each run uses model credits.
 #
-# Usage: scripts/headless.sh claude|codex [--registry HOST] [--keep]
+# Usage: scripts/headless.sh claude|codex [--registry HOST] [--tag TAG] [--keep]
 #
 # LOCALSTACK_AUTH_TOKEN must be set in the calling shell, and sbx must have
 # the agent credential (anthropic for claude, openai for codex).

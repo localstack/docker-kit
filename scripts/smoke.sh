@@ -5,7 +5,7 @@
 # The sandbox uses a kit argument and a LOCALSTACK_* variable, so the run
 # also checks that both reach LocalStack.
 #
-# Usage: scripts/smoke.sh claude|codex [--registry HOST] [--keep]
+# Usage: scripts/smoke.sh claude|codex [--registry HOST] [--tag TAG] [--keep]
 #
 # LOCALSTACK_AUTH_TOKEN must be set in the calling shell.
 set -euo pipefail
