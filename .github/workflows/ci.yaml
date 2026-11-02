@@ -1,6 +1,7 @@
-# Lints the scripts and builds every kit for both platforms. The sandbox tests
-# (make smoke, make project-config, make e2e) need KVM or Apple silicon, which
-# GitHub-hosted runners do not have, so they run on a developer machine.
+# Lints the scripts and builds every kit for both platforms. On each push to
+# main, it then pushes the kits to Docker Hub with the tag latest. The sandbox
+# tests (make smoke, make project-config, make e2e) need KVM or Apple silicon,
+# which GitHub-hosted runners do not have, so they run on a developer machine.
 name: CI
 
 on:
@@ -43,3 +44,33 @@ jobs:
         run: scripts/local-registry.sh
       - name: Build the mixin and the sets
         run: scripts/build.sh --registry localhost:5055 --platform linux/amd64,linux/arm64
+
+  # The docker-push environment holds the Docker Hub token. It accepts only
+  # main and v* tags. The token can push to many localstack repositories.
+  publish:
+    name: Publish latest kits
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, build]
+    runs-on: ubuntu-24.04
+    environment:
+      name: docker-push
+      deployment: false
+    # A newer push waits for the running publish, so latest ends on the newest
+    # commit.
+    concurrency:
+      group: publish-latest
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker system prune --all --force
+          df -h /
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PUSH_TOKEN }}
+      - name: Build and push the kits as latest
+        run: scripts/build.sh --latest
