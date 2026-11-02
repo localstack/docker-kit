@@ -88,6 +88,13 @@ only.
    $ make e2e AGENT=claude
    ```
 
+To test the kits that CI publishes from `main`, use Docker Hub and the tag
+`latest`:
+
+```console
+$ make smoke AGENT=claude REGISTRY=docker.io TAG=latest
+```
+
 Approve the agent credential for the set one time in an interactive
 `sbx run` before you run `e2e`. The scripts create sandboxes without a
 terminal, so `sbx` cannot ask.
