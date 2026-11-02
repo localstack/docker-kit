@@ -84,3 +84,4 @@ Lessons from building the kits in this repo. Scopes for commits here: kit, scrip
 - The first login shell of a new sandbox prints the template banner on stdout. Test helpers use bash -c, not bash -lc, when they read command output.
 - Read an lstk config as TOML, never with a text match. lstk loads it through viper, which also ignores the case of keys, so a text match misses literal strings, inline tables, and keys such as Image. lskit-check-config parses it with smol-toml.
 - A kit arg with the value latest does not change the text of a build step, so BuildKit keeps using the cached step after a new release. scripts/build.sh passes the current release numbers for lstk and the MCP server.
+- The CI Docker Hub token (docker-push environment) needs write access to each repository. A new repository in the localstack namespace does not get it. The login passes and the push fails with insufficient_scope, so ask for write access when you add a kit.
