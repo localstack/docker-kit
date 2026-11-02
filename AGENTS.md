@@ -87,3 +87,4 @@ Lessons from building the kits in this repo. Scopes for commits here: kit, scrip
 - The CI Docker Hub token (docker-push environment) needs write access to each repository. A new repository in the localstack namespace does not get it. The login passes and the push fails with insufficient_scope, so ask for write access when you add a kit.
 - A repository ruleset cannot list the GitHub Actions app as a bypass actor (GitHub rejects it), so GITHUB_TOKEN cannot create a protected v* tag. The release workflow pushes the tag with a deploy key from the release environment, and deploy keys bypass the tag ruleset.
 - The docker-push and release environments accept only main. A tag pattern there lets anyone who can create that tag reach the secrets.
+- scripts/lint.sh checks only files that git tracks. Run git add on a new script before you lint it, or CI finds what the local run missed.
