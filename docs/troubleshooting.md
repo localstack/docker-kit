@@ -97,6 +97,26 @@ env profile of the project config, and run `lstk restart`:
 GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
 ```
 
+## A LocalStack hostname does not resolve
+
+```text
+Could not connect to the endpoint URL: "http://s3.localhost.localstack.cloud:4566/"
+```
+
+The kit denies `localhost.localstack.cloud` and its subdomains at the sandbox
+proxy, and `sbx` 0.51 also refuses the DNS lookup of a denied name.
+`sbx policy log` shows `DNS lookup blocked by proxy policy`. The kit puts
+`localhost.localstack.cloud` in `/etc/hosts` in the sandbox and in the
+LocalStack container, so this name resolves. Subdomains do not resolve. Use
+`http://localhost:4566`, and path-style addresses for Amazon S3.
+
+If the LocalStack MCP server cannot connect after you start a LocalStack
+container without lstk, add the entry to that container:
+
+```console
+$ lskit-map-hostname container localstack-main
+```
+
 ## Port 4566 is in use on the host
 
 If LocalStack also runs on your host, `-p 4566:4566` cannot publish the
