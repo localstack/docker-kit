@@ -133,6 +133,7 @@ record_emulator() {
   fi
   printf '%s\n' "$name" >"$STATE_DIR/container-name"
   docker inspect -f '{{.Config.Image}}' "$name" >"$STATE_DIR/image" 2>/dev/null || true
+  lskit-map-hostname container "$name" || echo "note: localhost.localstack.cloud has no hosts entry in $name."
 }
 
 running_emulator_name() {

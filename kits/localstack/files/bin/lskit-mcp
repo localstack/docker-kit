@@ -25,7 +25,17 @@ main() {
     export LOCALSTACK_IMAGE_NAME="$image"
   fi
   export PATH="$KIT_HOME/bin:$KIT_HOME/node/bin:$PATH"
+  map_hostname_in "${MAIN_CONTAINER_NAME:-}"
   exec node "$SERVER_ENTRY" "$@"
+}
+
+# The AWS client of the server runs awslocal in the LocalStack container with
+# the endpoint localhost.localstack.cloud. A container from a later lstk start
+# or restart has no hosts entry for the name, so the launcher adds it again.
+map_hostname_in() {
+  if [[ -n "$1" ]]; then
+    lskit-map-hostname container "$1" >/dev/null 2>&1 || true
+  fi
 }
 
 main "$@"

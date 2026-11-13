@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Maps localhost.localstack.cloud to loopback in a hosts file, so that the
+# name resolves without DNS. The kit denies the name at the sandbox proxy, and
+# sbx also refuses the DNS lookup of a denied name.
+#
+# A hosts file has no wildcards, so subdomains such as
+# s3.localhost.localstack.cloud get no entry.
+#
+# Usage: lskit-map-hostname sandbox          (must run as root)
+#        lskit-map-hostname container NAME   (the LocalStack container)
+set -euo pipefail
+
+readonly HOSTS_ENTRY="127.0.0.1 localhost.localstack.cloud"
+readonly ADD_ENTRY="grep -q -x -F '$HOSTS_ENTRY' /etc/hosts || echo '$HOSTS_ENTRY' >>/etc/hosts"
+
+main() {
+  case "${1:-}" in
+    sandbox) sh -c "$ADD_ENTRY" ;;
+    container) docker exec -u 0 "${2:?usage: lskit-map-hostname container NAME}" sh -c "$ADD_ENTRY" ;;
+    *)
+      echo "usage: lskit-map-hostname sandbox | container NAME" >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"
