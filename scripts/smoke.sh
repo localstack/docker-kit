@@ -87,6 +87,7 @@ check_tools() {
 
 check_mcp() {
   run_check "MCP server lists LocalStack tools" check_mcp_tools
+  run_check "MCP server AWS client reaches LocalStack" check_mcp_aws_client
   run_check "MCP server is registered with $agent" check_mcp_registration
   if [[ "$agent" == codex ]]; then
     run_check "MCP server works with the variables that Codex passes" check_mcp_with_codex_env
@@ -98,6 +99,13 @@ check_mcp_tools() {
   tool_count="$(in_sandbox "$(mcp_request_command tools/list '{}')" | grep -o '"name":"localstack-[a-z-]*"' | sort -u | wc -l)"
   echo "tools: $tool_count"
   ((tool_count >= 10))
+}
+
+# The AWS client runs awslocal in the LocalStack container with the endpoint
+# localhost.localstack.cloud, so the name must resolve there.
+check_mcp_aws_client() {
+  in_sandbox "$(mcp_request_command tools/call '{"name":"localstack-aws-client","arguments":{"command":"s3 ls"}}')" \
+    | grep -q lskit-smoke
 }
 
 check_mcp_registration() {
@@ -121,6 +129,8 @@ check_restart() {
   run_check "LocalStack starts again after the sandbox restarts" restart_sandbox
   run_check "LocalStack answers after the restart" in_sandbox \
     'curl -s -m 5 -o /dev/null -w "%{http_code}" http://localhost:4566/_localstack/health | grep -qx 200'
+  run_check "LocalStack hostnames resolve after the restart" in_sandbox \
+    'curl -s -m 5 -o /dev/null -w "%{http_code}" http://localhost.localstack.cloud:4566/_localstack/health | grep -qx 200'
 }
 
 restart_sandbox() {

@@ -104,6 +104,8 @@ capabilities:
           # Through the proxy, loopback is the host, which can run its own
           # LocalStack. Sandbox clients reach these names directly, because
           # NO_PROXY has them (proxy-bypass.sh adds the LocalStack names).
+          # sbx also refuses the DNS lookup of a denied name, so
+          # lskit-map-hostname puts localhost.localstack.cloud in /etc/hosts.
           # The rules match names, so a DNS name that resolves to 127.0.0.1
           # still reaches the host under an allow-all policy.
           - localhost
@@ -141,6 +143,11 @@ capabilities:
             [cli]
             check_for_update_on_startup = false
       startup:
+        # sbx refuses the DNS lookup of the names that the deny rules list,
+        # so the name must resolve from /etc/hosts.
+        - command: /opt/localstack-kit/bin/lskit-map-hostname sandbox || true
+          user: "0"
+          description: Resolve localhost.localstack.cloud to the sandbox without DNS
         - command: /opt/localstack-kit/bin/lskit-start
           background: true
           # Hook variables are deny by default in the spec. sbx 0.45 passes the

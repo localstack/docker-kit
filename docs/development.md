@@ -9,7 +9,9 @@ kits/
     localstack.dockerfile  tools under /opt/localstack-kit
     context.md           instructions for the agent
     files/bin/           lstk wrapper, startup hook (lskit-start), boot state
-                         (lskit-status), MCP launcher and registration, shims
+                         (lskit-status), MCP launcher and registration, hosts
+                         entry for the LocalStack name (lskit-map-hostname),
+                         shims
     files/etc/           shell snippet that keeps LocalStack names off the proxy
     files/usr-local-bin/ dockerd wrapper that lets Docker pull Lambda images
   localstack-claude/     set: Docker's Claude Code kit and the mixin
