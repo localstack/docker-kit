@@ -66,9 +66,17 @@ check_isolation() {
   local url
   run_check "LocalStack hostnames reach the sandbox emulator" in_sandbox \
     'aws --endpoint-url http://localhost.localstack.cloud:4566 s3 ls | grep -q lskit-smoke'
+  run_check "LocalStack DNS resolves LocalStack subdomains in its container" check_container_dns
   for url in "${PROXY_DENIED_URLS[@]}"; do
     run_check "The proxy refuses $url" check_proxy_refuses "$url"
   done
+}
+
+# The LocalStack DNS server starts only if it has an upstream DNS server.
+check_container_dns() {
+  local container
+  container="$(in_sandbox 'head -n 1 /tmp/localstack-kit/container-name')"
+  in_sandbox "docker exec $container python3 -c 'import socket; socket.gethostbyname(\"s3.localhost.localstack.cloud\")'"
 }
 
 # --noproxy '' makes curl use the proxy even for names in NO_PROXY.
@@ -102,7 +110,8 @@ check_mcp_tools() {
 }
 
 # The AWS client runs awslocal in the LocalStack container with the endpoint
-# localhost.localstack.cloud, so the name must resolve there.
+# localhost.localstack.cloud. The LocalStack DNS server resolves the name
+# there, so this check fails if that server has no upstream.
 check_mcp_aws_client() {
   in_sandbox "$(mcp_request_command tools/call '{"name":"localstack-aws-client","arguments":{"command":"s3 ls"}}')" \
     | grep -q lskit-smoke
