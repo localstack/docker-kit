@@ -10,10 +10,29 @@ readonly LSTK_BINARY=/opt/localstack-kit/lstk/lstk
 readonly ACTIVE_CONFIG_FILE=/tmp/localstack-kit/config-path
 
 main() {
+  export_dns_upstream
   if needs_active_config "$@"; then
     set -- --config "$(head -n 1 "$ACTIVE_CONFIG_FILE")" "$@"
   fi
   exec env -u AWS_ENDPOINT_URL "$LSTK_BINARY" "$@"
+}
+
+# LocalStack runs a DNS server that resolves localhost.localstack.cloud and
+# its subdomains in the LocalStack container and in the containers that
+# LocalStack starts. The server starts only if it finds an upstream DNS
+# server, and it finds one by a lookup that the sandbox resolver refuses. So
+# the wrapper names the sandbox resolver as the upstream. The sandbox network
+# policy still applies to each lookup that LocalStack forwards. lstk passes
+# LOCALSTACK_* variables to the container.
+export_dns_upstream() {
+  local resolver
+  if [[ -n "${LOCALSTACK_DNS_SERVER:-}" || -n "${DNS_SERVER:-}" ]]; then
+    return
+  fi
+  resolver="$(awk '$1 == "nameserver" && $2 ~ /^[0-9.]+$/ { print $2; exit }' /etc/resolv.conf 2>/dev/null)"
+  if [[ -n "$resolver" ]]; then
+    export LOCALSTACK_DNS_SERVER="$resolver"
+  fi
 }
 
 # lstk reads ./.lstk/config.toml, then ~/.config/lstk/config.toml. Outside the
