@@ -107,11 +107,20 @@ The kit does two things:
   proxy. A request for these names through the proxy gets HTTP 403.
 
 `sbx` 0.51 also refuses the DNS lookup of a name that a deny rule lists, so
-the LocalStack names do not resolve in the sandbox. The kit writes
-`127.0.0.1 localhost.localstack.cloud` to `/etc/hosts` in the sandbox and in
-the LocalStack container, and the name then resolves without DNS. A hosts
-file has no wildcards, so subdomains such as `s3.localhost.localstack.cloud`
-do not resolve. Use `http://localhost:4566`.
+the sandbox resolver does not resolve the LocalStack names. The kit resolves
+them in two places:
+
+- In the LocalStack container and in the containers that LocalStack starts,
+  such as AWS Lambda functions, the LocalStack DNS server resolves
+  `localhost.localstack.cloud` and its subdomains. The kit sets the sandbox
+  resolver as the upstream of this server (`DNS_SERVER`). LocalStack forwards
+  all other lookups to the sandbox resolver, so the network policy still
+  applies to them.
+- In the sandbox, `/etc/resolv.conf` is read-only, so the sandbox cannot use
+  the LocalStack DNS server. The kit writes
+  `127.0.0.1 localhost.localstack.cloud` to `/etc/hosts`. A hosts file has no
+  wildcards, so subdomains such as `s3.localhost.localstack.cloud` do not
+  resolve in the sandbox. Use `http://localhost:4566`.
 
 This stops accidental access. It does not stop an agent that tries on
 purpose: the proxy rules match names, so under the `allow-all` policy, any

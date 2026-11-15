@@ -105,17 +105,32 @@ Could not connect to the endpoint URL: "http://s3.localhost.localstack.cloud:456
 
 The kit denies `localhost.localstack.cloud` and its subdomains at the sandbox
 proxy, and `sbx` 0.51 also refuses the DNS lookup of a denied name.
-`sbx policy log` shows `DNS lookup blocked by proxy policy`. The kit puts
-`localhost.localstack.cloud` in `/etc/hosts` in the sandbox and in the
-LocalStack container, so this name resolves. Subdomains do not resolve. Use
+`sbx policy log` shows `DNS lookup blocked by proxy policy`.
+
+In the sandbox, the kit puts `localhost.localstack.cloud` in `/etc/hosts`, so
+this name resolves. Subdomains do not resolve in the sandbox. Use
 `http://localhost:4566`, and path-style addresses for Amazon S3.
 
-If the LocalStack MCP server cannot connect after you start a LocalStack
-container without lstk, add the entry to that container:
+In the LocalStack container, the LocalStack DNS server resolves the name and
+its subdomains. The server needs an upstream DNS server, and the kit's lstk
+wrapper sets the sandbox resolver as the upstream. Without an upstream, the
+LocalStack log shows this line, and the LocalStack MCP server cannot connect:
+
+```text
+Error starting the DNS server: No upstream dns server found.
+```
+
+This occurs if you start a LocalStack container without the kit's lstk. Give
+that container the first `nameserver` address from `/etc/resolv.conf` of the
+sandbox:
 
 ```console
-$ lskit-map-hostname container localstack-main
+$ docker run -e DNS_SERVER=172.17.0.0 ...
 ```
+
+The wrapper sets `LOCALSTACK_DNS_SERVER`, and this value replaces a
+`DNS_SERVER` setting in an lstk config. To use a different upstream, create
+the sandbox with `-e LOCALSTACK_DNS_SERVER=<address>`.
 
 ## Port 4566 is in use on the host
 
