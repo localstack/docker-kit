@@ -103,34 +103,29 @@ GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
 Could not connect to the endpoint URL: "http://s3.localhost.localstack.cloud:4566/"
 ```
 
-The kit denies `localhost.localstack.cloud` and its subdomains at the sandbox
-proxy, and `sbx` 0.51 also refuses the DNS lookup of a denied name.
-`sbx policy log` shows `DNS lookup blocked by proxy policy`.
+`sbx` resolves only the names that a network rule allows, and it refuses the
+DNS lookup of a name that a deny rule lists. The kit allows
+`localhost.localstack.cloud` and its subdomains, so they resolve to
+`127.0.0.1` in the sandbox. Find the rule that refuses the name:
 
-In the sandbox, the kit puts `localhost.localstack.cloud` in `/etc/hosts`, so
-this name resolves. Subdomains do not resolve in the sandbox. Use
-`http://localhost:4566`, and path-style addresses for Amazon S3.
+```console
+$ sbx policy check network --sandbox ls-claude localhost.localstack.cloud:4566
+$ sbx policy log ls-claude
+```
 
-In the LocalStack container, the LocalStack DNS server resolves the name and
-its subdomains. The server needs an upstream DNS server, and the kit's lstk
-wrapper sets the sandbox resolver as the upstream. Without an upstream, the
-LocalStack log shows this line, and the LocalStack MCP server cannot connect:
+A deny rule for the name in your own policy has this effect, and
+`sbx policy log` then shows `DNS lookup blocked by proxy policy`. Remove that
+rule. The kit's rule for `127.0.0.0/8` already keeps these names away from
+the host.
+
+In the LocalStack container, the LocalStack DNS server resolves the names.
+It starts only if it can look up `localstack.cloud`, which the kit allows. If
+the LocalStack log shows this line, a rule refuses that name, and the
+LocalStack MCP server cannot connect:
 
 ```text
 Error starting the DNS server: No upstream dns server found.
 ```
-
-This occurs if you start a LocalStack container without the kit's lstk. Give
-that container the first `nameserver` address from `/etc/resolv.conf` of the
-sandbox:
-
-```console
-$ docker run -e DNS_SERVER=172.17.0.0 ...
-```
-
-The wrapper sets `LOCALSTACK_DNS_SERVER`, and this value replaces a
-`DNS_SERVER` setting in an lstk config. To use a different upstream, create
-the sandbox with `-e LOCALSTACK_DNS_SERVER=<address>`.
 
 ## Port 4566 is in use on the host
 
