@@ -76,6 +76,15 @@ capabilities:
           # LocalStack license activation and product events
           - api.localstack.cloud:443
           - analytics.localstack.cloud:443
+          # LocalStack looks up this name to find an upstream DNS server.
+          # If the lookup fails, the LocalStack DNS server does not start.
+          - localstack.cloud:443
+          # The LocalStack names resolve to 127.0.0.1, which is the sandbox
+          # for a direct connection. sbx resolves only the names that a rule
+          # allows. The deny rule for 127.0.0.0/8 still refuses these names
+          # at the proxy, because sbx also checks the resolved address.
+          - localhost.localstack.cloud
+          - "**.localhost.localstack.cloud"
           # LocalStack image pulls from Docker Hub
           - registry-1.docker.io:443
           - auth.docker.io:443
@@ -102,20 +111,16 @@ capabilities:
           - us.i.posthog.com:443
         deny:
           # Through the proxy, loopback is the host, which can run its own
-          # LocalStack. Sandbox clients reach these names directly, because
-          # NO_PROXY has them (proxy-bypass.sh adds the LocalStack names).
-          # sbx also refuses the DNS lookup of a denied name. In the
-          # LocalStack container, the LocalStack DNS server resolves the
-          # names (the lstk wrapper gives it an upstream). In the sandbox,
-          # lskit-map-hostname puts localhost.localstack.cloud in /etc/hosts.
-          # The rules match names, so a DNS name that resolves to 127.0.0.1
-          # still reaches the host under an allow-all policy.
+          # LocalStack. Sandbox clients reach the LocalStack names directly,
+          # because NO_PROXY has them (proxy-bypass.sh adds them).
+          # sbx refuses the DNS lookup of a name that a deny rule lists, so
+          # the LocalStack names must not be in this list. sbx 0.51 checks
+          # the address that a name resolves to against the CIDR rules, so
+          # the loopback rules refuse each name that resolves to loopback.
           - localhost
           - 127.0.0.0/8
           - "::1/128"
           - host.docker.internal
-          - localhost.localstack.cloud
-          - "**.localhost.localstack.cloud"
 
   - type: com.docker.sandbox/lifecycle@1
     config:
@@ -145,12 +150,6 @@ capabilities:
             [cli]
             check_for_update_on_startup = false
       startup:
-        # sbx refuses the DNS lookup of the names that the deny rules list,
-        # and /etc/resolv.conf is read-only in the sandbox, so the name must
-        # resolve from /etc/hosts there.
-        - command: /opt/localstack-kit/bin/lskit-map-hostname || true
-          user: "0"
-          description: Resolve localhost.localstack.cloud to the sandbox without DNS
         - command: /opt/localstack-kit/bin/lskit-start
           background: true
           # Hook variables are deny by default in the spec. sbx 0.45 passes the
