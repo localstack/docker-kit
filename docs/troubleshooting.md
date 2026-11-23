@@ -97,6 +97,36 @@ env profile of the project config, and run `lstk restart`:
 GATEWAY_LISTEN = "0.0.0.0:4566,0.0.0.0:443"
 ```
 
+## A LocalStack hostname does not resolve
+
+```text
+Could not connect to the endpoint URL: "http://s3.localhost.localstack.cloud:4566/"
+```
+
+`sbx` resolves only the names that a network rule allows, and it refuses the
+DNS lookup of a name that a deny rule lists. The kit allows
+`localhost.localstack.cloud` and its subdomains, so they resolve to
+`127.0.0.1` in the sandbox. Find the rule that refuses the name:
+
+```console
+$ sbx policy check network --sandbox ls-claude localhost.localstack.cloud:4566
+$ sbx policy log ls-claude
+```
+
+A deny rule for the name in your own policy has this effect, and
+`sbx policy log` then shows `DNS lookup blocked by proxy policy`. Remove that
+rule. The kit's rule for `127.0.0.0/8` already keeps these names away from
+the host.
+
+In the LocalStack container, the LocalStack DNS server resolves the names.
+It starts only if it can look up `localstack.cloud`, which the kit allows. If
+the LocalStack log shows this line, a rule refuses that name, and the
+LocalStack MCP server cannot connect:
+
+```text
+Error starting the DNS server: No upstream dns server found.
+```
+
 ## Port 4566 is in use on the host
 
 If LocalStack also runs on your host, `-p 4566:4566` cannot publish the

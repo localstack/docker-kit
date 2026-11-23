@@ -8,7 +8,7 @@ This page tells you what the kit isolates, what it does not isolate, and why.
 | --- | --- | --- |
 | Your host files and processes | Yes | The Docker Sandboxes microVM. The agent sees only the workspace that you mount. |
 | Your AWS accounts | Partly | The sandbox gets no AWS credentials. The AWS tools point at LocalStack. The kit does not block AWS endpoints. |
-| A LocalStack or other service on your host | Partly | The kit denies loopback names at the sandbox proxy. Under the `allow-all` policy, another name that resolves to `127.0.0.1` still reaches the host. |
+| A LocalStack or other service on your host | Yes, with `sbx` 0.51 | The kit denies loopback names and loopback addresses at the sandbox proxy. `sbx` also refuses a name that resolves to a loopback address. |
 | Your agent credentials | Yes | Docker Sandboxes keeps them on the host. The sandbox gets a placeholder. |
 | Your LocalStack auth token | No | The token must be in the sandbox. The agent can read it. |
 | The sandbox, from files in the workspace | Partly | The agent runs code from the workspace, and a project lstk config runs at boot. The kit limits the images that a project config can start. |
@@ -97,20 +97,32 @@ LocalStack or other local services. `localhost.localstack.cloud` and its
 subdomains resolve to `127.0.0.1`, so a client that sends these names to the
 proxy reaches the host.
 
-The kit does two things:
+The kit does three things:
 
 - It adds the LocalStack names to `NO_PROXY` and to the Java proxy bypass
   list, for agent shells, lstk, and the MCP server. These clients connect
   directly to the LocalStack in the sandbox.
-- It denies `localhost`, `127.0.0.0/8`, `::1`, `host.docker.internal`,
-  `localhost.localstack.cloud`, and `**.localhost.localstack.cloud` at the
-  proxy. A request for these names through the proxy gets HTTP 403.
+- It denies `localhost`, `127.0.0.0/8`, `::1`, and `host.docker.internal` at
+  the proxy. A request for these targets through the proxy gets HTTP 403.
+- It allows `localhost.localstack.cloud` and `**.localhost.localstack.cloud`,
+  because `sbx` resolves only the names that a rule allows. A direct
+  connection to these names stays in the sandbox. Through the proxy, `sbx`
+  checks the address that a name resolves to against the deny rules, so the
+  rule for `127.0.0.0/8` refuses these names with HTTP 403.
 
-This stops accidental access. It does not stop an agent that tries on
-purpose: the proxy rules match names, so under the `allow-all` policy, any
-other name that resolves to `127.0.0.1`, such as `127.0.0.1.nip.io`, still
-reaches the host. The `balanced` and `deny-all` policies refuse names that no
-rule allows, so they close this path.
+Do not add the LocalStack names to the deny rules. `sbx` refuses the DNS
+lookup of a name that a deny rule lists, and then no client in the sandbox or
+in the LocalStack container can resolve the name.
+
+The kit also allows `localstack.cloud`. LocalStack looks up this name to find
+an upstream DNS server. Without it, the LocalStack DNS server does not start,
+and the LocalStack names do not resolve in the LocalStack container or in the
+containers that LocalStack starts, such as AWS Lambda functions.
+
+With `sbx` 0.51, the address check also refuses other names that resolve to
+`127.0.0.1`, such as `127.0.0.1.nip.io`, under the `allow-all` policy. An
+earlier `sbx` matched names only, so use `sbx` 0.51 or later. If `sbx` uses
+an upstream proxy that resolves the names, `sbx` checks the name only.
 
 ## Docker daemon setting
 
